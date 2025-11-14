@@ -9,8 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 @Entity
 @Setter
@@ -23,8 +22,7 @@ public class Venta {
     private Long idVenta;
 
     private String cliente;
-    private String metodoPago;
-    private LocalDate fechaVenta;
-    private LocalTime horaVenta;
-    private Double total = 0.0;
+    private String metodoPago; //yape, plin, efectivo
+    private LocalDateTime fechahoraVenta;
+    private Double total;
 }

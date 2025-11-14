@@ -5,6 +5,11 @@ import com.upc.ep.Entidades.Detalle_Ped;
 import java.util.List;
 
 public interface Detalle_PedService {
-    public Detalle_Ped saveDP(Detalle_Ped dp);
-    public List<Detalle_Ped> listarDP();
+    Detalle_Ped saveDetallePed(Detalle_Ped detalle);
+    Detalle_Ped actualizarDetalle(Long id, Detalle_Ped detalleActualizado);
+    List<Detalle_Ped> listarDetalles();
+    List<Detalle_Ped> listarPorPedido(Long idPedido);
+    Integer contarPrendasPedido(Long idPedido);
+    boolean eliminarDetalle(Long id);
 }
+

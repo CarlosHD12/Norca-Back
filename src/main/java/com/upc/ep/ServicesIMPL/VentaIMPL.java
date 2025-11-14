@@ -2,12 +2,16 @@ package com.upc.ep.ServicesIMPL;
 
 import com.upc.ep.DTO.VentaDTO;
 import com.upc.ep.Entidades.Venta;
+import com.upc.ep.Repositorio.Detalle_VentRepos;
 import com.upc.ep.Repositorio.VentaRepos;
 import com.upc.ep.Services.VentaService;
+import jakarta.transaction.Transactional;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,11 +21,16 @@ public class VentaIMPL implements VentaService {
     @Autowired
     private VentaRepos ventaRepos;
 
+    @Autowired
+    private Detalle_VentRepos detalleVentRepos;
+
+    @Autowired
+    private ModelMapper modelMapper;
+
     @Override
     public Venta saveVenta(Venta venta) {
         // Fecha y hora automáticas al registrar
-        venta.setFechaVenta(LocalDate.now());
-        venta.setHoraVenta(LocalTime.now());
+        venta.setFechahoraVenta(LocalDateTime.now());
         return ventaRepos.save(venta);
     }
 
@@ -32,8 +41,7 @@ public class VentaIMPL implements VentaService {
             dto.setIdVenta(v.getIdVenta());
             dto.setCliente(v.getCliente());
             dto.setMetodoPago(v.getMetodoPago());
-            dto.setFechaVenta(v.getFechaVenta());
-            dto.setHoraVenta(v.getHoraVenta());
+            dto.setFechahoraVenta(v.getFechahoraVenta());
             dto.setTotal(v.getTotal());
             return dto;
         }).collect(Collectors.toList());
@@ -48,8 +56,7 @@ public class VentaIMPL implements VentaService {
         venta.setMetodoPago(ventaDTO.getMetodoPago());
 
         // Actualizamos automáticamente fecha y hora al modificar
-        venta.setFechaVenta(LocalDate.now());
-        venta.setHoraVenta(LocalTime.now());
+        venta.setFechahoraVenta(LocalDateTime.now());
 
         Venta actualizada = ventaRepos.save(venta);
 
@@ -57,9 +64,43 @@ public class VentaIMPL implements VentaService {
         dtoActualizado.setIdVenta(actualizada.getIdVenta());
         dtoActualizado.setCliente(actualizada.getCliente());
         dtoActualizado.setMetodoPago(actualizada.getMetodoPago());
-        dtoActualizado.setFechaVenta(actualizada.getFechaVenta());
-        dtoActualizado.setHoraVenta(actualizada.getHoraVenta());
+        dtoActualizado.setFechahoraVenta(actualizada.getFechahoraVenta());
 
         return dtoActualizado;
     }
+
+    @Override
+    public List<Venta> listarPorMetodoPago(String metodoPago) {
+        return ventaRepos.listarPorMetodoPago(metodoPago);
+    }
+
+    @Override
+    public List<Venta> listarPorFecha(LocalDate fecha) {
+        LocalDateTime inicioDelDia = fecha.atStartOfDay();
+        LocalDateTime finDelDia = fecha.atTime(LocalTime.MAX);
+        return ventaRepos.listarPorRangoFechas(inicioDelDia, finDelDia);
+    }
+
+    @Override
+    public List<Venta> listarPorRangoFechas(LocalDate inicio, LocalDate fin) {
+        LocalDateTime inicioDT = inicio.atStartOfDay();
+        LocalDateTime finDT = fin.atTime(LocalTime.MAX);
+        return ventaRepos.listarPorRangoFechas(inicioDT, finDT);
+    }
+
+    // En VentaServiceImpl
+    @Override
+    @Transactional
+    public boolean eliminarVenta(Long id) {
+        if (!ventaRepos.existsById(id)) return false;
+
+        // Primero eliminar detalles
+        detalleVentRepos.deleteByVentaIdVenta(id);
+
+        // Luego eliminar la venta
+        ventaRepos.deleteById(id);
+        return true;
+    }
+
+
 }

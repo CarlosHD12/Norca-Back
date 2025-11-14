@@ -1,9 +1,5 @@
 package com.upc.ep.DTO;
 
-import com.upc.ep.Entidades.Prenda;
-import com.upc.ep.Entidades.Venta;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,9 +15,11 @@ public class Detalle_VentDTO implements Serializable {
     private Long idDV;
     private Integer cantidad;
     private Double precioUnitario;
-    private Double subTotal;
+    private Double subTotal; //cantidad * precioUnitario
 
     private PrendaDTO prenda;
 
     private VentaDTO venta;
+
+    private TallaDTO talla;
 }

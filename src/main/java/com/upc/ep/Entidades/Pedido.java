@@ -9,7 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Setter
@@ -23,6 +23,6 @@ public class Pedido {
 
     private String cliente;
     private String descripcion;
-    private LocalDate fechaPedido;
+    private LocalDateTime fechaPedido;
     private String estado;
 }

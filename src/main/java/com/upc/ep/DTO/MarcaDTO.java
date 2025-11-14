@@ -1,8 +1,5 @@
 package com.upc.ep.DTO;
 
-import com.upc.ep.Entidades.Categoria;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,9 +11,9 @@ import java.io.Serializable;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class ModeloDTO implements Serializable {
-    private Long idModelo;
-    private String modelo;
+public class MarcaDTO implements Serializable {
+    private Long idMarca;
+    private String marca;
 
     private CategoriaDTO categoria;
 }

@@ -1,8 +1,5 @@
 package com.upc.ep.DTO;
 
-import com.upc.ep.Entidades.Pedido;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,7 +13,8 @@ import java.io.Serializable;
 @NoArgsConstructor
 public class Detalle_PedDTO implements Serializable {
     private Long idDP;
-    private Integer cantidad;
 
     private PedidoDTO pedido;
+
+    private PrendaDTO prenda;
 }

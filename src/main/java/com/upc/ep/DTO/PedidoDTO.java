@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Setter
 @Getter
@@ -16,6 +17,6 @@ public class PedidoDTO implements Serializable {
     private Long idPedido;
     private String cliente;
     private String descripcion;
-    private LocalDate fechaPedido;
+    private LocalDateTime fechaPedido;
     private String estado;
 }

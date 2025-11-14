@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
 import java.io.Serializable;
 import java.time.LocalDate;
 
@@ -14,16 +15,15 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class PrendaDTO implements Serializable {
     private Long idPrenda;
-    private String talla;
-    private String color;
-    private String marca;
-    private String calidad;
-    private Double precioVenta;
+    private String color; // Opcional
+    private String calidad; //Obligatorio
+    private Integer stock; //Obligatorio
+    private Double precioCompra; //Obligatorio
+    private Double precioVenta; //Obligatorio
     private String estado; //Disponible; Vendido; Pedido
-    private Integer stock;
-    private LocalDate fechaRegistro;
+    private String descripcion; //Opcional
+    private LocalDate fechaRegistro; //Automatico
 
-    private ModeloDTO modelo;
-
-    private Detalle_PedDTO detalle_ped;
+    private MarcaDTO marca;
+    private List<TallaSimpleDTO> tallas;
 }

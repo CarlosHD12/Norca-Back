@@ -18,7 +18,7 @@ public class Detalle_Vent {
 
     private Integer cantidad;
     private Double precioUnitario;
-    private Double subTotal;
+    private Double subTotal; //cantidad * precioUnitario
 
     @ManyToOne
     @JoinColumn(name = "prenda_id")
@@ -27,4 +27,8 @@ public class Detalle_Vent {
     @ManyToOne
     @JoinColumn(name = "venta_id")
     private Venta venta;
+
+    @ManyToOne
+    @JoinColumn(name = "talla_id")
+    private Talla talla;
 }

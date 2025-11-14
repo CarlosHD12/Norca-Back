@@ -11,12 +11,12 @@ import lombok.Setter;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class Modelo {
+public class Marca {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idModelo;
+    private Long idMarca;
 
-    private String modelo;
+    private String marca;
 
     @ManyToOne
     @JoinColumn(name = "categoria_id")
