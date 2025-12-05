@@ -5,6 +5,7 @@ import com.upc.ep.Entidades.Talla;
 import com.upc.ep.Repositorio.Detalle_PedRepos;
 import com.upc.ep.Repositorio.PrendaRepos;
 import com.upc.ep.Repositorio.TallaRepos;
+import com.upc.ep.Services.PrendaService;
 import com.upc.ep.Services.TallaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,7 @@ public class TallaIMPL implements TallaService {
     private Detalle_PedRepos dpRepos;
 
     @Autowired
-    private PrendaIMPL prendaIMPL;
+    private PrendaService prendaService;
 
     @Override
     public List<Talla> listarTallas() {
@@ -34,25 +35,6 @@ public class TallaIMPL implements TallaService {
     @Override
     public List<Talla> listarPorPrenda(Long idPrenda) {
         return tallaRepos.findByPrendaId(idPrenda);
-    }
-
-    // Función para actualizar el estado de la prenda según stock total de tallas
-    private void actualizarEstadoPrenda(Prenda prenda) {
-        // Sumar todas las cantidades de tallas asociadas
-        Integer stockTotal = tallaRepos.sumStockByPrendaId(prenda.getIdPrenda());
-        if (stockTotal == null) stockTotal = 0;
-
-        boolean tienePedidoPendiente = dpRepos.existsByPrendaIdAndPedidoEstado(prenda.getIdPrenda(), "Pendiente");
-
-        if (tienePedidoPendiente) {
-            prenda.setEstado("Pedido");
-        } else if (stockTotal == 0) {
-            prenda.setEstado("Agotado");
-        } else {
-            prenda.setEstado("Disponible");
-        }
-
-        prendaRepos.save(prenda);
     }
 
     // Guardar tallas respetando el stock de la prenda
@@ -78,7 +60,7 @@ public class TallaIMPL implements TallaService {
         Talla guardada = tallaRepos.save(talla);
 
         // Actualizar estado de la prenda
-        actualizarEstadoPrenda(prenda);
+        prendaService.actualizarEstadoPrenda(prenda);
 
         return guardada;
     }
@@ -94,8 +76,8 @@ public class TallaIMPL implements TallaService {
 
         Talla actualizada = tallaRepos.save(talla);
 
-        // 🔥 Actualizar estado de la prenda después de editar tallas
-        prendaIMPL.actualizarEstadoPrendaSegunPedidos(talla.getPrenda());
+        // Actualizar estado de la prenda después de editar tallas
+        prendaService.actualizarEstadoPrenda(talla.getPrenda());
 
         return actualizada;
     }
@@ -110,11 +92,8 @@ public class TallaIMPL implements TallaService {
         tallaRepos.deleteById(id);
 
         // Actualizar estado de la prenda
-        if (prenda != null) actualizarEstadoPrenda(prenda);
+        if (prenda != null) prendaService.actualizarEstadoPrenda(prenda);
 
         return true;
     }
-
-
 }
-

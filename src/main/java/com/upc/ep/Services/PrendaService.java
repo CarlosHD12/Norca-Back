@@ -1,6 +1,7 @@
 package com.upc.ep.Services;
 
 import com.upc.ep.DTO.PrendaDTO;
+import com.upc.ep.DTO.PrendaStockBajoDTO;
 import com.upc.ep.Entidades.Marca;
 import com.upc.ep.Entidades.Prenda;
 
@@ -21,8 +22,8 @@ public interface PrendaService {
     List<Marca> listarMarcas();
     List<Prenda> listarPorRangoPrecio(Double min, Double max);
     List<Prenda> listarPorFecha(LocalDate fechaRegistro);
-    boolean actualizarEstado(Long id, String nuevoEstado);
     boolean verificarPrendaExistente(Long marcaId, String calidad);
     List<PrendaDTO> buscarPrendas(String descripcion, Long idMarca, Long idCategoria, String estado,
                                   LocalDate fecha, LocalDate fechaDesde, LocalDate fechaHasta);
+    List<PrendaStockBajoDTO> listarStockBajo(Integer limite);
 }

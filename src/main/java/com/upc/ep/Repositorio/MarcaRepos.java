@@ -16,3 +16,4 @@ public interface MarcaRepos extends JpaRepository<Marca, Long> {
     @Query("SELECT m FROM Marca m WHERE m.categoria.idCategoria = :idCategoria")
     List<Marca> findMarcasByCategoria(@Param("idCategoria") Long idCategoria);
 }
+

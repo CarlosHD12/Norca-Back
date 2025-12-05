@@ -97,28 +97,6 @@ public class PedidoIMPL implements PedidoService {
         return pedidoActualizado;
     }
 
-    private void procesarPrendaCancelada(Prenda prenda) {
-        Long idPrenda = prenda.getIdPrenda();
-
-        // Paso 1: ¿Está en otro pedido PENDIENTE?
-        boolean enOtroPedidoPendiente = dpRepos.existsByPrendaIdPrendaAndPedidoEstado(
-                idPrenda, "Pendiente"
-        );
-
-        if (enOtroPedidoPendiente) {
-            prenda.setEstado("Pedido");
-        } else {
-            // Paso 2: Verificar stock real
-            Integer stockTotal = tallaRepos.sumStockByPrendaId(idPrenda);
-            if (stockTotal == null) stockTotal = 0;
-
-            prenda.setEstado(stockTotal > 0 ? "Disponible" : "Agotado");
-            prenda.setStock(stockTotal); // opcional, si guardas stock en prenda
-        }
-
-        prendaRepos.save(prenda);
-    }
-
     @Override
     public List<Pedido> listarPorEstado(String estado) {
         return pedidoRepos.findByEstado(estado);

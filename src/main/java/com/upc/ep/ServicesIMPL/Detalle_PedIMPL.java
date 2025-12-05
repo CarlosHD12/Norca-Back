@@ -6,6 +6,7 @@ import com.upc.ep.Repositorio.Detalle_PedRepos;
 import com.upc.ep.Repositorio.PrendaRepos;
 import com.upc.ep.Repositorio.TallaRepos;
 import com.upc.ep.Services.Detalle_PedService;
+import com.upc.ep.Services.PrendaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,32 +19,14 @@ public class Detalle_PedIMPL implements Detalle_PedService {
     private Detalle_PedRepos detallePedRepos;
 
     @Autowired
+    private PrendaService prendaService;
+
+
+    @Autowired
     private TallaRepos tallaRepos;
 
     @Autowired
     private PrendaRepos prendaRepos;
-
-    // -------------------- ACTUALIZA ESTADO DE LA PRENDA --------------------
-    private void actualizarEstadoPrenda(Prenda prenda) {
-        // Stock total de la prenda
-        Integer stockTotal = tallaRepos.sumStockByPrendaId(prenda.getIdPrenda());
-        if (stockTotal == null) stockTotal = 0;
-
-        // Revisar si tiene algún pedido pendiente
-        boolean tienePedidoPendiente = detallePedRepos.existsByPrendaIdAndPedidoEstado(
-                prenda.getIdPrenda(), "Pendiente"
-        );
-
-        if (tienePedidoPendiente) {
-            prenda.setEstado("Pedido");
-        } else if (stockTotal == 0) {
-            prenda.setEstado("Agotado");
-        } else {
-            prenda.setEstado("Disponible");
-        }
-
-        prendaRepos.save(prenda);
-    }
 
     // -------------------- GUARDAR DETALLE DE PEDIDO --------------------
     @Override
@@ -63,7 +46,7 @@ public class Detalle_PedIMPL implements Detalle_PedService {
         Detalle_Ped guardado = detallePedRepos.save(detalle);
 
         // Actualizar estado de la prenda según stock y pedidos pendientes
-        actualizarEstadoPrenda(prenda);
+        prendaService.actualizarEstadoPrenda(prenda);
 
         return guardado;
     }
@@ -82,7 +65,7 @@ public class Detalle_PedIMPL implements Detalle_PedService {
         Detalle_Ped guardado = detallePedRepos.save(existente);
 
         // Actualizar estado de la prenda según stock y pedidos pendientes
-        actualizarEstadoPrenda(guardado.getPrenda());
+        prendaService.actualizarEstadoPrenda(guardado.getPrenda());
 
         return guardado;
     }
@@ -112,7 +95,7 @@ public class Detalle_PedIMPL implements Detalle_PedService {
         detallePedRepos.deleteById(id);
 
         // Actualizar estado de la prenda
-        if (prenda != null) actualizarEstadoPrenda(prenda);
+        if (prenda != null) prendaService.actualizarEstadoPrenda(prenda);
 
         return true;
     }

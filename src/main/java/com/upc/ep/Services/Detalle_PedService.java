@@ -12,4 +12,3 @@ public interface Detalle_PedService {
     Integer contarPrendasPedido(Long idPedido);
     boolean eliminarDetalle(Long id);
 }
-

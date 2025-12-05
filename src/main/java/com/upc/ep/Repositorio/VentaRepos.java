@@ -21,5 +21,4 @@ public interface VentaRepos extends JpaRepository<Venta, Long> {
     // Listar por rango de fechas (usando LocalDateTime)
     @Query("SELECT v FROM Venta v WHERE v.fechahoraVenta BETWEEN :inicio AND :fin")
     List<Venta> listarPorRangoFechas(@Param("inicio") LocalDateTime inicio, @Param("fin") LocalDateTime fin);
-
 }

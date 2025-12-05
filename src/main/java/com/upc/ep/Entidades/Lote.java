@@ -1,27 +1,28 @@
 package com.upc.ep.Entidades;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @Entity
 @Setter
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class Talla {
+public class Lote {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idTalla;
+    private Long idLote;
 
-    private String size;    // S, M, L, XL, etc.
     private Integer cantidad;
+    private Double precioCompraTotal;
+    private LocalDate fechaIngreso = LocalDate.now();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "prenda_id")
-    @JsonIgnoreProperties({"tallas", "marca"})
+    @ManyToOne
+    @JoinColumn(name = "prenda_id", nullable = false)
     private Prenda prenda;
 }

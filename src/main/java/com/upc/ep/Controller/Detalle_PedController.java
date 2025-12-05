@@ -2,7 +2,6 @@ package com.upc.ep.Controller;
 
 import com.upc.ep.DTO.Detalle_PedDTO;
 import com.upc.ep.Entidades.Detalle_Ped;
-import com.upc.ep.Repositorio.Detalle_PedRepos;
 import com.upc.ep.Services.Detalle_PedService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +10,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/Norca")

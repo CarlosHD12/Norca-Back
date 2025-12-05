@@ -1,6 +1,7 @@
 package com.upc.ep.Controller;
 
 import com.upc.ep.DTO.PrendaDTO;
+import com.upc.ep.DTO.PrendaStockBajoDTO;
 import com.upc.ep.Entidades.Marca;
 import com.upc.ep.Entidades.Prenda;
 import com.upc.ep.Repositorio.PrendaRepos;
@@ -15,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -140,13 +140,6 @@ public class PrendaController {
                 .collect(Collectors.toList());
     }
 
-    // -------------------- ACTUALIZAR SOLO ESTADO --------------------
-    @PatchMapping("/prenda/estado/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public ResponseEntity<Void> actualizarEstado(@PathVariable Long id, @RequestParam String estado) {
-        boolean ok = prendaService.actualizarEstado(id, estado);
-        return ok ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
-    }
 
     // -------------------- ELIMINAR --------------------
     @DeleteMapping("/prenda/eliminar/{id}")
@@ -183,5 +176,13 @@ public class PrendaController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta
     ){
         return prendaService.buscarPrendas(descripcion, idMarca, idCategoria, estado, fecha, fechaDesde, fechaHasta);
+    }
+
+    @GetMapping("/bajo-stock")
+    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
+    public ResponseEntity<List<PrendaStockBajoDTO>> obtenerStockBajo(
+            @RequestParam(defaultValue = "5") Integer limite
+    ) {
+        return ResponseEntity.ok(prendaService.listarStockBajo(limite));
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -134,5 +135,41 @@ public class Detalle_VentController {
         }
 
         return ResponseEntity.ok(detallesDTO);
+    }
+
+    @GetMapping("/prenda/{id}/total-vendido")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('AYUDANTE')")
+    public Integer totalVendido(@PathVariable Long id) {
+        return detalleService.totalUnidadesVendidas(id);
+    }
+
+    @GetMapping("/prenda/{id}/ingresos")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('AYUDANTE')")
+    public Double ingresos(@PathVariable Long id) {
+        return detalleService.ingresosTotales(id);
+    }
+
+    @GetMapping("/prenda/{id}/ventas")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('AYUDANTE')")
+    public Integer cantidadVentas(@PathVariable Long id) {
+        return detalleService.cantidadVentas(id);
+    }
+
+    @GetMapping("/prenda/{id}/ultima-venta")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('AYUDANTE')")
+    public LocalDateTime ultimaVenta(@PathVariable Long id) {
+        return detalleService.ultimaVenta(id);
+    }
+
+    @GetMapping("/ranking")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('AYUDANTE')")
+    public List<Object[]> ranking() {
+        return detalleService.rankingPrendas();
+    }
+
+    @GetMapping("/prenda/{id}/tiempo-promedio")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('AYUDANTE')")
+    public Long tiempoPromedio(@PathVariable Long id) {
+        return detalleService.tiempoPromedioVenta(id);
     }
 }

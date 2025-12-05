@@ -1,19 +1,24 @@
 package com.upc.ep.ServicesIMPL;
 
 import com.upc.ep.DTO.VentaDTO;
+import com.upc.ep.Entidades.Detalle_Vent;
+import com.upc.ep.Entidades.Prenda;
+import com.upc.ep.Entidades.Talla;
 import com.upc.ep.Entidades.Venta;
 import com.upc.ep.Repositorio.Detalle_VentRepos;
+import com.upc.ep.Repositorio.TallaRepos;
 import com.upc.ep.Repositorio.VentaRepos;
 import com.upc.ep.Services.VentaService;
 import jakarta.transaction.Transactional;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,7 +30,11 @@ public class VentaIMPL implements VentaService {
     private Detalle_VentRepos detalleVentRepos;
 
     @Autowired
-    private ModelMapper modelMapper;
+    private TallaRepos tallaRepos;
+
+    @Autowired
+    private PrendaIMPL prendaIMPL;
+
 
     @Override
     public Venta saveVenta(Venta venta) {
@@ -88,19 +97,38 @@ public class VentaIMPL implements VentaService {
         return ventaRepos.listarPorRangoFechas(inicioDT, finDT);
     }
 
-    // En VentaServiceImpl
-    @Override
     @Transactional
     public boolean eliminarVenta(Long id) {
-        if (!ventaRepos.existsById(id)) return false;
 
-        // Primero eliminar detalles
+        Venta venta = ventaRepos.findById(id).orElse(null);
+        if (venta == null) return false;
+
+        List<Detalle_Vent> detalles = detalleVentRepos.findByVentaIdVenta(id);
+
+        // Guarda solo prendas únicas para recalculado
+        Set<Prenda> prendasARecalcular = new HashSet<>();
+
+        // 1. Restaurar stock de tallas
+        for (Detalle_Vent det : detalles) {
+            Talla talla = det.getTalla();
+
+            talla.setCantidad(talla.getCantidad() + det.getCantidad());
+            tallaRepos.save(talla);
+
+            prendasARecalcular.add(talla.getPrenda());
+        }
+
+        // 2. Eliminar detalles
         detalleVentRepos.deleteByVentaIdVenta(id);
 
-        // Luego eliminar la venta
+        // 3. Eliminar venta
         ventaRepos.deleteById(id);
+
+        // 4. Recalcular estado + stock de cada prenda afectada
+        for (Prenda p : prendasARecalcular) {
+            prendaIMPL.restaurarStockYRecalcularEstado(p);
+        }
+
         return true;
     }
-
-
 }
