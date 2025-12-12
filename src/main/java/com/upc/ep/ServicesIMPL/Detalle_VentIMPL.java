@@ -190,7 +190,7 @@ public class Detalle_VentIMPL implements Detalle_VentService {
         prendaDTO.setIdPrenda(prenda.getIdPrenda());
         prendaDTO.setDescripcion(prenda.getDescripcion());
         prendaDTO.setStock(prenda.getStock());
-        prendaDTO.setColor(prenda.getColor());
+        prendaDTO.setColores(prenda.getColores());
         prendaDTO.setEstado(prenda.getEstado());
         dto.setPrenda(prendaDTO);
 

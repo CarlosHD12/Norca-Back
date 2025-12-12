@@ -21,7 +21,13 @@ public class Prenda {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idPrenda;
 
-    private String color; // Opcional
+    @ElementCollection
+    @CollectionTable(
+            name = "prenda_colores",
+            joinColumns = @JoinColumn(name = "prenda_id")
+    )
+    @Column(name = "color")
+    private List<String> colores = new ArrayList<>();
     private String calidad; //Obligatorio
     private Integer stock;
     private Double precioCompra; //Obligatorio

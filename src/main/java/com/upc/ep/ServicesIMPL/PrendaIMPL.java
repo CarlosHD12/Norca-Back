@@ -8,7 +8,6 @@ import com.upc.ep.Entidades.Talla;
 import com.upc.ep.Repositorio.*;
 import com.upc.ep.Services.PrendaService;
 import jakarta.transaction.Transactional;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -65,8 +64,9 @@ public class PrendaIMPL implements PrendaService {
     // Mapear Prenda a DTO
     private PrendaDTO mapToDTO(Prenda prenda) {
         PrendaDTO dto = new PrendaDTO();
+
         dto.setIdPrenda(prenda.getIdPrenda());
-        dto.setColor(prenda.getColor());
+        dto.setColores(prenda.getColores());
         dto.setCalidad(prenda.getCalidad());
         dto.setPrecioCompra(prenda.getPrecioCompra());
         dto.setPrecioVenta(prenda.getPrecioVenta());
@@ -75,6 +75,7 @@ public class PrendaIMPL implements PrendaService {
         dto.setEstado(prenda.getEstado());
         dto.setFechaRegistro(prenda.getFechaRegistro());
 
+        // Marca
         if (prenda.getMarca() != null) {
             MarcaDTO marcaDTO = new MarcaDTO();
             marcaDTO.setIdMarca(prenda.getMarca().getIdMarca());
@@ -82,7 +83,8 @@ public class PrendaIMPL implements PrendaService {
             dto.setMarca(marcaDTO);
         }
 
-        if(prenda.getTallas() != null && !prenda.getTallas().isEmpty()) {
+        // Tallas
+        if (prenda.getTallas() != null && !prenda.getTallas().isEmpty()) {
             List<TallaSimpleDTO> tallasDTO = prenda.getTallas().stream().map(t -> {
                 TallaSimpleDTO td = new TallaSimpleDTO();
                 td.setIdTalla(t.getIdTalla());
@@ -94,7 +96,6 @@ public class PrendaIMPL implements PrendaService {
         } else {
             dto.setTallas(new ArrayList<>());
         }
-
 
         return dto;
     }
@@ -151,11 +152,12 @@ public class PrendaIMPL implements PrendaService {
         Double precioCompraOriginal = prenda.getPrecioCompra();
 
         // Actualizar campos básicos
-        prenda.setColor(prendaDTO.getColor());
+        prenda.setColores(prendaDTO.getColores());
         prenda.setCalidad(prendaDTO.getCalidad());
         prenda.setPrecioCompra(prendaDTO.getPrecioCompra());
         prenda.setPrecioVenta(prendaDTO.getPrecioVenta());
         prenda.setDescripcion(prendaDTO.getDescripcion());
+
 
         // Actualizar marca
         if (prendaDTO.getMarca() != null && prendaDTO.getMarca().getIdMarca() != null) {

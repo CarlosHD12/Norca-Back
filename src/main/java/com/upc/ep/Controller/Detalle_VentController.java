@@ -102,7 +102,7 @@ public class Detalle_VentController {
             if (d.getPrenda() != null) {
                 PrendaDTO prendaDTO = new PrendaDTO();
                 prendaDTO.setIdPrenda(d.getPrenda().getIdPrenda());
-                prendaDTO.setColor(d.getPrenda().getColor());
+                prendaDTO.setColores(d.getPrenda().getColores()); // ✅ AHORA UNA LISTA
                 prendaDTO.setCalidad(d.getPrenda().getCalidad());
                 prendaDTO.setStock(d.getPrenda().getStock());
                 prendaDTO.setPrecioCompra(d.getPrenda().getPrecioCompra());
@@ -112,14 +112,15 @@ public class Detalle_VentController {
                 prendaDTO.setFechaRegistro(d.getPrenda().getFechaRegistro());
                 prendaDTO.setMarca(modelMapper.map(d.getPrenda().getMarca(), MarcaDTO.class));
 
-                // Mapear la lista de tallas
                 List<TallaSimpleDTO> tallasDTO = d.getPrenda().getTallas().stream()
                         .map(t -> modelMapper.map(t, TallaSimpleDTO.class))
                         .toList();
+
                 prendaDTO.setTallas(tallasDTO);
 
                 dto.setPrenda(prendaDTO);
             }
+
 
             // Mapear Venta
             if (d.getVenta() != null) {
