@@ -103,7 +103,11 @@ public class MetricasServiceImpl implements MetricasService {
         List<Object[]> raw = metricaRepos.top10PrendasVendidasRaw();
 
         return raw.stream()
+<<<<<<< HEAD
                 .limit(5)
+=======
+                .limit(10)
+>>>>>>> b10c84a8d71aad025fe04122ab55e94fc88b7552
                 .map(row -> {
                     Long prendaId = (Long) row[0];
                     Long vendidos = (Long) row[1];
