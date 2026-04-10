@@ -1,9 +1,6 @@
 package com.upc.ep.Entidades;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,5 +16,11 @@ public class Categoria {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idCategoria;
 
+    @Column(nullable = false, length = 50, unique = true)
     private String nombre;
+
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @Column(nullable = true)
+    private byte[] imagenBytes;
 }

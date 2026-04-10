@@ -1,22 +1,16 @@
 package com.upc.ep.Controller;
 
-import com.upc.ep.DTO.PrendaDTO;
-import com.upc.ep.DTO.PrendaStockBajoDTO;
-import com.upc.ep.Entidades.Marca;
+import com.upc.ep.DTO.*;
 import com.upc.ep.Entidades.Prenda;
-import com.upc.ep.Repositorio.PrendaRepos;
 import com.upc.ep.Services.PrendaService;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/Norca")
@@ -31,158 +25,132 @@ public class PrendaController {
     @Autowired
     private PrendaService prendaService;
 
-    @Autowired
-    private PrendaRepos prendaRepos;
-
-    @Autowired
-    private ModelMapper modelMapper;
-
-    // -------------------- GUARDAR --------------------
-    @PostMapping("/prenda")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public PrendaDTO savePrenda(@RequestBody Prenda prenda) {
-        return prendaService.savePrenda(prenda);
+    @PostMapping("/post/prenda")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<PrendaDTO> registrarPrenda(@RequestBody PrendaDTO prendaDTO) {
+        PrendaDTO nuevaPrenda = prendaService.registrarPrenda(prendaDTO);
+        return new ResponseEntity<>(nuevaPrenda, HttpStatus.CREATED);
     }
 
-    // -------------------- LISTAR TODAS --------------------
-    @GetMapping("/prendas")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<PrendaDTO> listarPrendas() {
-        return prendaService.listarPrendas().stream()
-                .map(prenda -> modelMapper.map(prenda, PrendaDTO.class))
-                .collect(Collectors.toList());
+    @PutMapping("/put/prenda/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<PrendaDTO> editarPrenda(@PathVariable Long id, @RequestBody PrendaDTO prendaDTO) {
+        PrendaDTO actualizado = prendaService.editarPrenda(id, prendaDTO);
+        return new ResponseEntity<>(actualizado, HttpStatus.OK);
     }
 
-    // -------------------- EDITAR --------------------
-    @PutMapping("/prenda/modificar/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public ResponseEntity<PrendaDTO> putPrenda(@PathVariable Long id, @RequestBody PrendaDTO prendaDTO) {
-        PrendaDTO actualizada = prendaService.putPrenda(id, prendaDTO);
-        return new ResponseEntity<>(actualizada, HttpStatus.OK);
-    }
-
-    // -------------------- FILTRAR POR MARCA --------------------
-    @GetMapping("/prendas/marca/{idMarca}")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<PrendaDTO> listarPorMarca(@PathVariable Long idMarca) {
-        List<Prenda> prendas = prendaService.listarPorMarca(idMarca);
-        return prendas.stream()
-                .map(p -> modelMapper.map(p, PrendaDTO.class))
-                .collect(Collectors.toList());
-    }
-
-    // -------------------- DETALLES DE PRENDA ESPECIFICA --------------------
-    @GetMapping("/detalle/prenda/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public ResponseEntity<PrendaDTO> getPrendaById(@PathVariable Long id) {
-        Prenda prenda = prendaService.findById(id);
-
-        // Mapear a DTO
-        PrendaDTO prendaDTO = modelMapper.map(prenda, PrendaDTO.class);
-
-        return ResponseEntity.ok(prendaDTO);
-    }
-
-    // -------------------- FILTRAR POR CATEGORÍA --------------------
-    @GetMapping("/prendas/categoria/{idCategoria}")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<PrendaDTO> listarPorCategoria(@PathVariable Long idCategoria) {
-        List<Prenda> prendas = prendaService.listarPorCategoria(idCategoria);
-        return prendas.stream()
-                .map(p -> modelMapper.map(p, PrendaDTO.class))
-                .collect(Collectors.toList());
-    }
-
-    // -------------------- FILTRAR POR CALIDAD --------------------
-    @GetMapping("/prendas/calidad/{calidad}")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<PrendaDTO> listarPorCalidad(@PathVariable String calidad) {
-        List<Prenda> prendas = prendaService.listarPorCalidad(calidad);
-        return prendas.stream()
-                .map(p -> modelMapper.map(p, PrendaDTO.class))
-                .collect(Collectors.toList());
-    }
-
-    // -------------------- FILTRAR POR ESTADO --------------------
-    @GetMapping("/prendas/estado/{estado}")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<PrendaDTO> listarPorEstado(@PathVariable String estado) {
-        List<Prenda> prendas = prendaService.listarPorEstado(estado);
-        return prendas.stream()
-                .map(p -> modelMapper.map(p, PrendaDTO.class))
-                .collect(Collectors.toList());
-    }
-
-    // -------------------- LISTAR TODAS LAS MARCAS --------------------
-    @GetMapping("/prendas/marcas")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<Marca> listarMarcas() {
-        return prendaService.listarMarcas();
-    }
-
-    // -------------------- FILTRAR POR RANGO DE PRECIO --------------------
-    @GetMapping("/prendas/rango")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<PrendaDTO> listarPorRangoPrecio(@RequestParam Double min, @RequestParam Double max) {
-        List<Prenda> prendas = prendaService.listarPorRangoPrecio(min, max);
-        return prendas.stream()
-                .map(p -> modelMapper.map(p, PrendaDTO.class))
-                .collect(Collectors.toList());
-    }
-
-    // -------------------- FILTRAR POR FECHA --------------------
-    @GetMapping("/prendas/fecha")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<PrendaDTO> listarPorFecha(@RequestParam LocalDate fecha) {
-        List<Prenda> prendas = prendaService.listarPorFecha(fecha);
-        return prendas.stream()
-                .map(p -> modelMapper.map(p, PrendaDTO.class))
-                .collect(Collectors.toList());
-    }
-
-
-    // -------------------- ELIMINAR --------------------
-    @DeleteMapping("/prenda/eliminar/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/delete/prenda/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
     public ResponseEntity<Void> eliminarPrenda(@PathVariable Long id) {
-        boolean eliminado = prendaService.eliminarPrenda(id);
-
-        if (!eliminado) {
-            return ResponseEntity.badRequest().build(); // 400 sin mensaje
-        }
-        return ResponseEntity.noContent().build(); // 204 No Content
+        prendaService.eliminarPrenda(id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-    // -------------------- VERIFICAR EXISTE PRENDA --------------------
-    @GetMapping("/prenda/existe")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public ResponseEntity<Boolean> existePrenda(
-            @RequestParam Long marcaId,
-            @RequestParam String calidad) {
-        boolean existe = prendaService.verificarPrendaExistente(marcaId, calidad);
-        return ResponseEntity.ok(existe);
+    @GetMapping("/obtener/prenda/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<Prenda> getPrenda(@PathVariable Long id) {
+        Prenda prenda = prendaService.obtenerPrendaPorId(id);
+        return ResponseEntity.ok(prenda);
     }
 
-    // -------------------- FILTRO --------------------
-    @GetMapping("/prendas/filtrar")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<PrendaDTO> buscarPrendas(
-            @RequestParam(required = false) String descripcion,
-            @RequestParam(required = false) Long idMarca,
-            @RequestParam(required = false) Long idCategoria,
-            @RequestParam(required = false) String estado,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta
-    ){
-        return prendaService.buscarPrendas(descripcion, idMarca, idCategoria, estado, fecha, fechaDesde, fechaHasta);
+    @GetMapping("/listar/prendas")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public List<PrendaListadoDTO> listarPrendas() {
+        return prendaService.listarPrendasConStockYUltimoPrecio();
     }
 
-    @GetMapping("/bajo-stock")
+    @GetMapping("/detalle/prenda/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<PrendaDetalleDTO> obtenerDetalle(@PathVariable Long id) {
+        return ResponseEntity.ok(prendaService.obtenerDetallePrenda(id));
+    }
+
+    @PutMapping("/cambiar/estado/{idPrenda}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public String cambiarEstado(@PathVariable Long idPrenda) {
+        prendaService.cambiarEstado(idPrenda);
+        return "Prenda con id " + idPrenda + " marcada como fuera de temporada";
+    }
+
+    @PutMapping("/activar/prenda/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<String> activarPrenda(@PathVariable Long id) {
+        prendaService.activarPrenda(id);
+        return ResponseEntity.ok("Prenda activada correctamente");
+    }
+
+    @GetMapping("/listar/prenda/disponibles")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public List<PrendaCarritoDTO> listarPrendasDisponibles() {
+        return prendaService.listarPrendasDisponibles();
+    }
+
+    @GetMapping("/inventario/prenda/{idPrenda}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<List<InventarioActivoDTO>> listarInventarioPorPrenda(@PathVariable Long idPrenda) {
+        List<InventarioActivoDTO> inventarios = prendaService.listarInventarioPorPrenda(idPrenda);
+        return ResponseEntity.ok(inventarios);
+    }
+
+    @GetMapping("/distribucion/categoria")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<List<Map<String, Object>>> getDistribucionPorCategoria() {
+        return ResponseEntity.ok(prendaService.distribucionPorCategoria());
+    }
+
+    @GetMapping("/distribucion/marca")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<List<Map<String, Object>>> getDistribucionPorMarca() {
+        return ResponseEntity.ok(prendaService.distribucionPorMarca());
+    }
+
+    @GetMapping("/distribucion/estado")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<List<Map<String, Object>>> getDistribucionPorEstado() {
+        return ResponseEntity.ok(prendaService.distribucionPorEstado());
+    }
+
+    @GetMapping("/prenda/olvidada")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<List<PrendaOlvidadaDTO>> obtenerPrendasOlvidadas() {
+        List<PrendaOlvidadaDTO> lista = prendaService.obtenerPrendasOlvidadas();
+        return ResponseEntity.ok(lista);
+    }
+
+    @GetMapping("/prenda/ranking")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public List<TopDTO> rankingMasVendidas(){
+        return prendaService.rankingPrendasMasVendidas();
+    }
+
+    @GetMapping("/prenda/stock-bajo")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public List<StockBajoDTO> obtenerPrendasBajoStock(
+            @RequestParam(defaultValue = "10") Integer limite) {
+        return prendaService.bajoStock(limite);
+    }
+
+    @GetMapping("/prendas/totales")
     @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public ResponseEntity<List<PrendaStockBajoDTO>> obtenerStockBajo(
-            @RequestParam(defaultValue = "5") Integer limite
-    ) {
-        return ResponseEntity.ok(prendaService.listarStockBajo(limite));
+    public PrendasTotalesDTO obtenerKPIPrendas() {
+        return prendaService.obtenerKPIPrendas();
+    }
+
+    @GetMapping("/prenda/agotada")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public Long obtenerPrendasAgotadas() {
+        return prendaService.obtenerPrendasAgotadas();
+    }
+
+    @GetMapping("/stock/categoria")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public List<StockCategoriaDTO> stockPorCategoria() {
+        return prendaService.obtenerStockPorCategoria();
+    }
+
+    @GetMapping("/get/prendas")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public List<PrendaDTO> getPrendas() {
+        return prendaService.obtenerPrendas();
     }
 }

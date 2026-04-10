@@ -15,14 +15,11 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class PrendaDTO implements Serializable {
     private Long idPrenda;
-    private List<String> colores;
-    private String calidad;
-    private Integer stock;
-    private Double precioCompra;
-    private Double precioVenta;
+    private String material;
+    private LocalDate fechaRegistro;
     private String estado;
     private String descripcion;
-    private LocalDate fechaRegistro;
+    private List<String> colores;
+    private CategoriaDTO categoria;
     private MarcaDTO marca;
-    private List<TallaSimpleDTO> tallas;
 }

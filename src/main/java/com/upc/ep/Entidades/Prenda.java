@@ -1,6 +1,6 @@
 package com.upc.ep.Entidades;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -8,8 +8,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Setter
@@ -21,26 +22,40 @@ public class Prenda {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idPrenda;
 
+    @Column(nullable = false, length = 50)
+    private String material;
+
+    @Column(nullable = false)
+    private LocalDate fechaRegistro;
+
+    @Column(nullable = false, length = 20)
+    private String estado;
+
+    @JsonIgnore
+    private String estadoAnterior;
+
+    @Column(length = 255)
+    private String descripcion;
+
     @ElementCollection
     @CollectionTable(
             name = "prenda_colores",
-            joinColumns = @JoinColumn(name = "prenda_id")
+            joinColumns = @JoinColumn(name = "idPrenda")
     )
-    @Column(name = "color")
-    private List<String> colores = new ArrayList<>();
-    private String calidad; //Obligatorio
-    private Integer stock;
-    private Double precioCompra; //Obligatorio
-    private Double precioVenta; //Obligatorio
-    private String estado; //Disponible; Vendido; Pedido
-    private String descripcion; //Opcional
-    private LocalDate fechaRegistro; //Automatico
+    @Column(name = "color", nullable = false, length = 30)
+    private List<String> colores;
 
-    @ManyToOne
-    @JoinColumn(name = "marca_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "categoria_idCategoria", nullable = false)
+    private Categoria categoria;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "marca_idMarca", nullable = false)
     private Marca marca;
 
     @OneToMany(mappedBy = "prenda", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnoreProperties("prenda")
-    private List<Talla> tallas = new ArrayList<>();
+    private Set<Lote> lotes = new HashSet<>();
+
+    @OneToOne(mappedBy = "prenda", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private Metrica metrica;
 }

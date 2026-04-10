@@ -1,17 +1,38 @@
 package com.upc.ep.Services;
 
-import com.upc.ep.DTO.VentaDTO;
-import com.upc.ep.Entidades.Venta;
+import com.upc.ep.DTO.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public interface VentaService {
-    public Venta saveVenta(Venta venta);
-    public List<VentaDTO> listarVentas();
-    VentaDTO putVenta(Long id, VentaDTO ventaDTO);
-    List<Venta> listarPorMetodoPago(String metodoPago);
-    List<Venta> listarPorFecha(LocalDate fecha);
-    List<Venta> listarPorRangoFechas(LocalDate inicio, LocalDate fin);
-    boolean eliminarVenta(Long id);
+    VentaDTO registrarVenta(VentaDTO ventaDTO);
+    List<VentaDTO> listarVentas();
+    VentaDTO editarVenta(Long id, VentaDTO ventaDTO);
+    void eliminarVenta(Long id);
+    VentaDetalleDTO obtenerDetalleVenta(Long idVenta);
+    void desactivarVenta(Long idVenta);
+    VentasTotalesDTO obtenerKpiVentas();
+    VentasTotalesDTO obtenerKpiUnidades();
+    VentasTotalesDTO obtenerIngresosTotales();
+    MetodoPagoDTO obtenerMetodoPagoFavorito();
+    List<IngresosCategoriaDTO> obtenerIngresosPorCategoria();
+    List<Map<String, Object>> reportePorMes(String tipo);
+    Page<VentaListadoDTO> listarVentas(
+            String codigo,
+            String metodoPago,
+            String periodo,
+            LocalDateTime fechaInicio,
+            LocalDateTime fechaFin,
+            Double precioMin,
+            Double precioMax,
+            Integer unidadesMin,
+            Integer unidadesMax,
+            Pageable pageable
+    );
+
+    ImpactoVentaDTO obtenerImpactoVenta(Long idVenta);
 }

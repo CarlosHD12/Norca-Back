@@ -1,13 +1,12 @@
 package com.upc.ep.Services;
 
-import com.upc.ep.Entidades.Talla;
+import com.upc.ep.DTO.TallaDTO;
 
 import java.util.List;
 
 public interface TallaService {
-    public Talla saveTalla(Talla talla);
-    public List<Talla> listarTallas();
-    List<Talla> listarPorPrenda(Long idPrenda);
-    Talla editarTalla(Long id, Talla tallaActualizada);
-    boolean eliminarTalla(Long id);
+    TallaDTO registrarTalla(TallaDTO tallaDTO);
+    List<TallaDTO> listarTallas();
+    TallaDTO actualizarTalla(Long id, TallaDTO tallaDTO);
+    void eliminarTalla(Long id);
 }

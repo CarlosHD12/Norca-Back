@@ -5,14 +5,21 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serializable;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 @Setter
 @Getter
-@AllArgsConstructor
 @NoArgsConstructor
-public class PrendaOlvidadaDTO {
+@AllArgsConstructor
+public class PrendaOlvidadaDTO implements Serializable {
+    private Long idPrenda;
     private String categoria;
     private String marca;
-    private String calidad;
-    private Integer stock;
-    private Double precioVenta;
+    private String material;
+    private String descripcion;
+    private Integer stockActual;
+    private LocalDate fechaUltimoLote;
+    private LocalDateTime fechaUltimaVenta;
 }

@@ -1,9 +1,7 @@
 package com.upc.ep.Controller;
 
 import com.upc.ep.DTO.TallaDTO;
-import com.upc.ep.Entidades.Talla;
 import com.upc.ep.Services.TallaService;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +9,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/Norca")
@@ -26,51 +23,31 @@ public class TallaController {
     @Autowired
     private TallaService tallaService;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
-    // -------------------- GUARDAR --------------------
-    @PostMapping("/talla")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public TallaDTO saveTalla(@RequestBody TallaDTO tallaDTO) {
-        Talla talla = modelMapper.map(tallaDTO, Talla.class);
-        talla = tallaService.saveTalla(talla);
-        return modelMapper.map(talla, TallaDTO.class);
+    @PostMapping("/post/talla")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<TallaDTO> crearTalla(@RequestBody TallaDTO tallaDTO) {
+        TallaDTO nuevaTalla = tallaService.registrarTalla(tallaDTO);
+        return new ResponseEntity<>(nuevaTalla, HttpStatus.CREATED);
     }
 
-    // -------------------- LISTAR TODAS --------------------
-    @GetMapping("/tallas")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<TallaDTO> listarTallas() {
-        List<Talla> tallas = tallaService.listarTallas();
-        return tallas.stream()
-                .map(t -> modelMapper.map(t, TallaDTO.class))
-                .collect(Collectors.toList());
+    @GetMapping("/get/talla")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<List<TallaDTO>> listarTallas() {
+        List<TallaDTO> tallas = tallaService.listarTallas();
+        return new ResponseEntity<>(tallas, HttpStatus.OK);
     }
 
-    // -------------------- LISTAR POR PRENDA --------------------
-    @GetMapping("/tallas/prenda/{idPrenda}")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<TallaDTO> listarPorPrenda(@PathVariable Long idPrenda) {
-        List<Talla> tallas = tallaService.listarPorPrenda(idPrenda);
-        return tallas.stream()
-                .map(t -> modelMapper.map(t, TallaDTO.class))
-                .collect(Collectors.toList());
+    @PutMapping("/put/talla/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<TallaDTO> actualizarTalla(@PathVariable Long id, @RequestBody TallaDTO tallaDTO) {
+        TallaDTO actualizada = tallaService.actualizarTalla(id, tallaDTO);
+        return new ResponseEntity<>(actualizada, HttpStatus.OK);
     }
 
-    // -------------------- EDITAR --------------------
-    @PutMapping("/talla/modificar/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public ResponseEntity<TallaDTO> editarTalla(@PathVariable Long id, @RequestBody TallaDTO tallaDTO) {
-        Talla tallaActualizada = tallaService.editarTalla(id, modelMapper.map(tallaDTO, Talla.class));
-        return new ResponseEntity<>(modelMapper.map(tallaActualizada, TallaDTO.class), HttpStatus.OK);
-    }
-
-    // -------------------- ELIMINAR --------------------
-    @DeleteMapping("/talla/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/delete/talla/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
     public ResponseEntity<Void> eliminarTalla(@PathVariable Long id) {
-        boolean ok = tallaService.eliminarTalla(id);
-        return ok ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
+        tallaService.eliminarTalla(id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }

@@ -1,11 +1,12 @@
 package com.upc.ep.Services;
 
-import com.upc.ep.Entidades.Marca;
+import com.upc.ep.DTO.MarcaDTO;
 
 import java.util.List;
 
 public interface MarcaService {
-    public Marca saveMarca(Marca marca);
-    public List<Marca> listarMarcas();
-    List<Marca> listarPorCategoria(Long idCategoria);
+    MarcaDTO registrarMarca(MarcaDTO marcaDTO);
+    List<MarcaDTO> listarMarcas();
+    MarcaDTO actualizarMarca(Long id, MarcaDTO marcaDTO);
+    void eliminarMarca(Long id);
 }

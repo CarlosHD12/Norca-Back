@@ -11,8 +11,8 @@ import java.io.Serializable;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class TallaSimpleDTO implements Serializable {
-    private Long idTalla;
-    private String size;
+public class TallaDetalleDTO implements Serializable {
+    private String talla;
     private Integer cantidad;
+    private Double subtotal;
 }

@@ -13,7 +13,5 @@ import java.io.Serializable;
 @NoArgsConstructor
 public class MarcaDTO implements Serializable {
     private Long idMarca;
-    private String marca;
-
-    private CategoriaDTO categoria;
+    private String nombre;
 }

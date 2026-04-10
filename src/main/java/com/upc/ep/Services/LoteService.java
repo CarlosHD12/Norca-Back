@@ -1,9 +1,14 @@
 package com.upc.ep.Services;
 
-import com.upc.ep.DTO.LoteDTO;
+import com.upc.ep.DTO.*;
 
 import java.util.List;
 
 public interface LoteService {
-    List<LoteDTO> obtenerLotesPorPrenda(Long prendaId);
+    LoteDTO registrarLote(LoteDTO loteDTO);
+    LoteMetricasDTO calcularMetricas(Long idLote);
+    Long obtenerLotesActivos();
+    List<LoteMensualDTO> obtenerLotesPorMes();
+    LotesTotalesDTO obtenerStockDisponible();
+    List<LoteDetalleDTO> obtenerHistorialPrenda(Long idPrenda);
 }

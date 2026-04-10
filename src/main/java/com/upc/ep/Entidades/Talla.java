@@ -1,11 +1,13 @@
 package com.upc.ep.Entidades;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Setter
@@ -17,11 +19,9 @@ public class Talla {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idTalla;
 
-    private String size;    // S, M, L, XL, etc.
-    private Integer cantidad;
+    @Column(nullable = false, length = 10, unique = true)
+    private String nombre;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "prenda_id")
-    @JsonIgnoreProperties({"tallas", "marca"})
-    private Prenda prenda;
+    @OneToMany(mappedBy = "talla", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Inventario> inventarios = new HashSet<>();
 }

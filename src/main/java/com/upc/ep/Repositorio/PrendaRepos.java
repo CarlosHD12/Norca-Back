@@ -1,81 +1,182 @@
 package com.upc.ep.Repositorio;
 
-import com.upc.ep.Entidades.Marca;
-import com.upc.ep.Entidades.Pedido;
+import com.upc.ep.DTO.PrendaListadoDTO;
+import com.upc.ep.DTO.PrendaOlvidadaDTO;
+import com.upc.ep.DTO.StockBajoDTO;
+import com.upc.ep.DTO.StockCategoriaDTO;
+import com.upc.ep.Entidades.Inventario;
 import com.upc.ep.Entidades.Prenda;
-import jakarta.transaction.Transactional;
-import org.springframework.data.domain.PageRequest;
+
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
-import java.awt.print.Pageable;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface PrendaRepos extends JpaRepository<Prenda, Long> {
-    // Trae la prenda con marca y tallas cargadas para que el front pueda usarlas
-    @Query("SELECT p FROM Prenda p " +
-            "LEFT JOIN FETCH p.marca " +
-            "LEFT JOIN FETCH p.tallas " +
-            "WHERE p.idPrenda = :id")
-    Optional<Prenda> findByIdWithDetails(@Param("id") Long id);
+    Optional<Prenda> findById(Long idPrenda);
 
-    //Obtener Prenda por marca
-    @Query("SELECT p FROM Prenda p JOIN FETCH p.marca m WHERE m.idMarca = :idMarca")
-    List<Prenda> listarPorMarca(@Param("idMarca") Long idMarca);
+    @Query("SELECT p FROM Prenda p ORDER BY p.idPrenda DESC")
+    List<Prenda> findAllPrendasOrdenDesc();
 
-    //Listar prendas por categorias
-    @Query("SELECT p FROM Prenda p WHERE p.marca.categoria.idCategoria = :idCategoria")
-    List<Prenda> listarPorCategoria(@Param("idCategoria") Long idCategoria);
+    @Query("""
+    SELECT DISTINCT p
+    FROM Prenda p
+    LEFT JOIN FETCH p.categoria
+    LEFT JOIN FETCH p.marca
+    LEFT JOIN FETCH p.lotes l
+    LEFT JOIN FETCH l.inventarios i
+    LEFT JOIN FETCH i.talla
+    WHERE p.idPrenda = :id
+    """)
+    Optional<Prenda> obtenerDetallePrenda(Long id);
 
-    //Listar prendas por calidad
-    @Query("SELECT p FROM Prenda p WHERE p.calidad = :calidad")
-    List<Prenda> listarPorCalidad(@Param("calidad") String calidad);
+    @Query("SELECT p FROM Prenda p WHERE p.estado = :estado ORDER BY p.idPrenda DESC")
+    List<Prenda> findByEstadoOrderByIdDesc(@Param("estado") String estado);
 
-    //Listar prendas por estado
-    @Query("SELECT p FROM Prenda p WHERE p.estado = :estado")
-    List<Prenda> listarPorEstado(@Param("estado") String estado);
+    @Query("SELECT p.categoria.nombre, COUNT(p) FROM Prenda p GROUP BY p.categoria.nombre")
+    List<Object[]> countByCategoria();
 
-    //Listar todas las marcas distintas
-    @Query("SELECT DISTINCT p.marca FROM Prenda p ORDER BY p.marca.marca ASC")
-    List<Marca> listarMarcas();
+    @Query("SELECT p.marca.nombre, COUNT(p) FROM Prenda p GROUP BY p.marca.nombre")
+    List<Object[]> countByMarca();
 
-    //Buscar por rango de precio
-    List<Prenda> findByPrecioVentaBetween(Double min, Double max);
+    @Query("SELECT p.estado, COUNT(p) FROM Prenda p GROUP BY p.estado")
+    List<Object[]> countByEstado();
 
-    //Buscar por fecha exacta de registro
-    List<Prenda> findByFechaRegistro(LocalDate fechaRegistro);
+    @Query("""
+    SELECT new com.upc.ep.DTO.PrendaOlvidadaDTO(
+        p.idPrenda,
+        p.categoria.nombre,
+        p.marca.nombre,
+        p.material,
+        p.descripcion,
+        l.stockActual,
+        l.fechaIngreso,
+        (
+            SELECT MAX(v2.fechaHora)
+            FROM Lote l2
+            JOIN l2.inventarios i2
+            JOIN i2.detalle_Vents dv2
+            JOIN dv2.venta v2
+            WHERE l2.prenda.idPrenda = p.idPrenda
+        )
+    )
+    FROM Prenda p
+    JOIN p.lotes l
+    WHERE l.activo = true
+    AND l.stockActual > 0
+    AND (
+        (
+            SELECT MAX(v2.fechaHora)
+            FROM Lote l2
+            JOIN l2.inventarios i2
+            JOIN i2.detalle_Vents dv2
+            JOIN dv2.venta v2
+            WHERE l2.prenda.idPrenda = p.idPrenda
+        ) IS NULL
+        OR
+        (
+            SELECT MAX(v2.fechaHora)
+            FROM Lote l2
+            JOIN l2.inventarios i2
+            JOIN i2.detalle_Vents dv2
+            JOIN dv2.venta v2
+            WHERE l2.prenda.idPrenda = p.idPrenda
+        ) <= :fechaLimite
+    )
+    """)
+    List<PrendaOlvidadaDTO> findPrendasOlvidadas(LocalDateTime fechaLimite);
 
-    // Actualizar solo estado de una prenda
-    @Modifying
-    @Transactional
-    @Query("UPDATE Prenda p SET p.estado = :nuevoEstado WHERE p.idPrenda = :id")
-    int actualizarEstado(@Param("id") Long id, @Param("nuevoEstado") String nuevoEstado);
+    @Query("""
+    SELECT 
+        p.idPrenda,
+        p.categoria.nombre,
+        p.marca.nombre,
+        p.material,
+        p.descripcion,
+        SUM(dv.cantidad)
+    FROM Prenda p
+    JOIN p.lotes l
+    JOIN l.inventarios i
+    JOIN i.detalle_Vents dv
+    GROUP BY p.idPrenda, p.categoria.nombre, p.marca.nombre, p.material, p.descripcion
+    ORDER BY SUM(dv.cantidad) DESC
+    """)
+    List<Object[]> rankingPrendasMasVendidas();
 
-    boolean existsByMarca_IdMarcaAndCalidad(Long idMarca, String calidad);
+    @Query("""
+    SELECT new com.upc.ep.DTO.StockBajoDTO(
+        p.idPrenda,
+        c.nombre,
+        m.nombre,
+        p.material,
+        p.descripcion,
+        l.idLote,
+        l.cantidad,
+        SUM(i.stock)
+    )
+    FROM Prenda p
+    JOIN p.categoria c
+    JOIN p.marca m
+    JOIN p.lotes l
+    JOIN l.inventarios i
+    WHERE l.activo = true
+    GROUP BY p.idPrenda, c.nombre, m.nombre, p.material, p.descripcion, l.idLote, l.cantidad
+    HAVING SUM(i.stock) <= :limite
+""")
+    List<StockBajoDTO> bajoStock(@Param("limite") Integer limite);
 
-    @Query("SELECT p FROM Prenda p " +
-            "LEFT JOIN p.marca m " +
-            "LEFT JOIN m.categoria c " +
-            "WHERE (:descripcion IS NULL OR p.descripcion LIKE %:descripcion%) " +
-            "AND (:idMarca IS NULL OR m.idMarca = :idMarca) " +
-            "AND (:idCategoria IS NULL OR c.idCategoria = :idCategoria) " +
-            "AND (:estado IS NULL OR p.estado = :estado) " +
-            "AND (:fecha IS NULL OR p.fechaRegistro = :fecha) " +
-            "AND ((:fechaDesde IS NULL OR :fechaHasta IS NULL) OR (p.fechaRegistro BETWEEN :fechaDesde AND :fechaHasta))")
-    List<Prenda> buscarPrendas(
-            @Param("descripcion") String descripcion,
-            @Param("idMarca") Long idMarca,
-            @Param("idCategoria") Long idCategoria,
-            @Param("estado") String estado,
-            @Param("fecha") LocalDate fecha,
-            @Param("fechaDesde") LocalDate fechaDesde,
-            @Param("fechaHasta") LocalDate fechaHasta
+    @Query("SELECT COUNT(p) FROM Prenda p")
+    Long totalPrendas();
+
+    @Query("""
+    SELECT COUNT(p)
+    FROM Prenda p
+    WHERE p.fechaRegistro >= :inicio
+    """)
+    Long prendasDesde(@Param("inicio") LocalDate inicio);
+
+    @Query("""
+    SELECT COUNT(p)
+    FROM Prenda p
+    WHERE p.fechaRegistro BETWEEN :inicio AND :fin
+    """)
+    Long prendasEntre(
+            @Param("inicio") LocalDate inicio,
+            @Param("fin") LocalDate fin
     );
 
-    @Query("SELECT p FROM Prenda p WHERE p.stock < :limite ORDER BY p.stock ASC")
-    List<Prenda> listarStockBajo(@Param("limite") Integer limite);
+    @Query("""
+    SELECT COUNT(p)
+    FROM Prenda p
+    WHERE p.estado = 'AGOTADO'
+""")
+    Long totalPrendasAgotadas();
+
+    @Query("""
+    SELECT new com.upc.ep.DTO.StockCategoriaDTO(
+        c.nombre,
+        SUM(l.stockActual)
+    )
+    FROM Lote l
+    JOIN l.prenda p
+    JOIN p.categoria c
+    WHERE l.activo = true
+    GROUP BY c.nombre
+    """)
+    List<StockCategoriaDTO> stockPorCategoria();
+
+    @Query("SELECT i FROM Inventario i " +
+            "JOIN i.lote l " +
+            "JOIN l.prenda p " +
+            "WHERE p.idPrenda = ?1 " +
+            "AND l.activo = true " +
+            "AND i.stock > 0 " +
+            "ORDER BY l.fechaIngreso ASC, l.idLote ASC")
+    List<Inventario> findInventarioActivoFIFO(Long idPrenda);
 }

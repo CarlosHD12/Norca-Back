@@ -11,10 +11,9 @@ import java.io.Serializable;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class TopPrendaDTO {
-    private Long prendaId;
-    private String calidad;
-    private String marca;
-    private String categoria;
-    private Integer vendidos;
+public class LoteMensualDTO implements Serializable {
+    private int anio;
+    private int mes;
+    private Long totalLotes;
+
 }

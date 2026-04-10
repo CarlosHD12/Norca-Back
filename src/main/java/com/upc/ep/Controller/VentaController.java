@@ -1,10 +1,14 @@
 package com.upc.ep.Controller;
 
-import com.upc.ep.DTO.VentaDTO;
+import com.upc.ep.DTO.*;
 import com.upc.ep.Entidades.Venta;
 import com.upc.ep.Services.VentaService;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,8 +16,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/Norca")
@@ -28,75 +33,144 @@ public class VentaController {
     @Autowired
     private VentaService ventaService;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
-    // -------------------- GUARDAR --------------------
-    @PostMapping("/venta")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public VentaDTO saveVenta(@RequestBody VentaDTO ventaDTO) {
-        Venta venta = modelMapper.map(ventaDTO, Venta.class);
-        venta = ventaService.saveVenta(venta);
-        return modelMapper.map(venta, VentaDTO.class);
+    @PostMapping("/post/venta")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<VentaDTO> registrarVenta(@RequestBody VentaDTO ventaDTO) {
+        VentaDTO nuevaVenta = ventaService.registrarVenta(ventaDTO);
+        return new ResponseEntity<>(nuevaVenta, HttpStatus.CREATED);
     }
 
-    // -------------------- LISTAR TODAS --------------------
-    @GetMapping("/ventas")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<VentaDTO> listarVentas() {
-        return ventaService.listarVentas();
+    @GetMapping("/get/venta")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<List<VentaDTO>> listarVentas() {
+        List<VentaDTO> lista = ventaService.listarVentas();
+        return new ResponseEntity<>(lista, HttpStatus.OK);
     }
 
-    // -------------------- EDITAR --------------------
-    @PutMapping("/venta/modificar/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public ResponseEntity<VentaDTO> putVenta(@PathVariable Long id, @RequestBody VentaDTO ventaDTO) {
-        VentaDTO actualizada = ventaService.putVenta(id, ventaDTO);
-        return new ResponseEntity<>(actualizada, HttpStatus.OK);
+    @PutMapping("/put/venta/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<VentaDTO> editarVenta(@PathVariable Long id, @RequestBody VentaDTO ventaDTO) {
+        VentaDTO actualizado = ventaService.editarVenta(id, ventaDTO);
+        return new ResponseEntity<>(actualizado, HttpStatus.OK);
     }
 
-    // -------------------- LISTAR POR METODO DE PAGO --------------------
-    @GetMapping("/ventas/metodo/{metodoPago}")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<VentaDTO> listarPorMetodoPago(@PathVariable String metodoPago) {
-        return ventaService.listarPorMetodoPago(metodoPago)
-                .stream()
-                .map(v -> modelMapper.map(v, VentaDTO.class))
-                .collect(Collectors.toList());
+    @DeleteMapping("/delete/venta/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public ResponseEntity<Void> eliminarVenta(@PathVariable Long id) {
+        ventaService.eliminarVenta(id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-    // -------------------- LISTAR POR FECHA ESPECIFICA --------------------
-    @GetMapping("/ventas/fecha/{fecha}")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<VentaDTO> listarPorFecha(
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
-        return ventaService.listarPorFecha(fecha)
-                .stream()
-                .map(v -> modelMapper.map(v, VentaDTO.class))
-                .collect(Collectors.toList());
+    @GetMapping("/detalle/venta/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public VentaDetalleDTO getDetalle(@PathVariable Long id) {
+        return ventaService.obtenerDetalleVenta(id);
     }
 
-    // -------------------- LISTAR POR RANGO DE FECHAS --------------------
-    @GetMapping("/ventas/rango")
-    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public List<VentaDTO> listarPorRangoFechas(
-            @RequestParam("inicio") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
-            @RequestParam("fin") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
-        return ventaService.listarPorRangoFechas(inicio, fin)
-                .stream()
-                .map(v -> modelMapper.map(v, VentaDTO.class))
-                .collect(Collectors.toList());
+    @PutMapping("/desactivar/venta/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public String desactivarVenta(@PathVariable("id") Long idVenta) {
+        ventaService.desactivarVenta(idVenta);
+        return "Venta desactivada correctamente";
     }
 
-    @DeleteMapping("/venta/eliminar/{id}")
+    @GetMapping("/ventas/totales")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public VentasTotalesDTO kpiVentas(){
+        return ventaService.obtenerKpiVentas();
+    }
+
+    @GetMapping("/unidades/totales")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public VentasTotalesDTO kpiUnidades(){
+        return ventaService.obtenerKpiUnidades();
+    }
+
+    @GetMapping("/ingresos/totales")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+    public VentasTotalesDTO obtenerIngresosTotales(){
+        return ventaService.obtenerIngresosTotales();
+    }
+
+    @GetMapping("/metodo/top")
     @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
-    public ResponseEntity<String> eliminarVenta(@PathVariable Long id) {
-        boolean eliminado = ventaService.eliminarVenta(id);
-        if (eliminado) {
-            return ResponseEntity.ok("Venta eliminada correctamente");
+    public MetodoPagoDTO obtenerMetodoPagoFavorito(){
+        return ventaService.obtenerMetodoPagoFavorito();
+    }
+
+    @GetMapping("/ganancias/categoria")
+    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
+    public List<IngresosCategoriaDTO> obtenerIngresosPorCategoria() {
+        return ventaService.obtenerIngresosPorCategoria();
+    }
+
+    @GetMapping("/ventas/mensuales")
+    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
+    public List<Map<String, Object>> reporteMensual(
+            @RequestParam String tipo
+    ) {
+        return ventaService.reportePorMes(tipo);
+    }
+
+    @GetMapping("/listar/ventas")
+    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
+    public Page<VentaListadoDTO> listarVentas(
+
+            @RequestParam(required = false) String codigo,
+            @RequestParam(required = false) String metodoPago,
+            @RequestParam(required = false) String periodo,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate fecha,
+
+            @RequestParam(required = false) Double precioMin,
+            @RequestParam(required = false) Double precioMax,
+            @RequestParam(required = false) Integer unidadesMin,
+            @RequestParam(required = false) Integer unidadesMax,
+
+            @PageableDefault(size = 10, sort = "idVenta", direction = Sort.Direction.DESC)
+            Pageable pageable
+    ) {
+
+        codigo = (codigo == null || codigo.isBlank()) ? "" : codigo;
+        metodoPago = (metodoPago == null || metodoPago.isBlank()) ? "" : metodoPago;
+        periodo = (periodo == null) ? "" : periodo;
+
+        precioMin = (precioMin == null) ? 0.0 : precioMin;
+        precioMax = (precioMax == null) ? Double.MAX_VALUE : precioMax;
+
+        unidadesMin = (unidadesMin == null) ? 0 : unidadesMin;
+        unidadesMax = (unidadesMax == null) ? Integer.MAX_VALUE : unidadesMax;
+
+        LocalDateTime fechaInicio;
+        LocalDateTime fechaFin;
+
+        if (fecha != null) {
+            fechaInicio = fecha.atStartOfDay();
+            fechaFin = fecha.plusDays(1).atStartOfDay();
         } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("La venta con ID " + id + " no existe");
+            fechaInicio = LocalDateTime.of(1900, 1, 1, 0, 0);
+            fechaFin = LocalDateTime.of(2100, 1, 1, 0, 0);
         }
+
+        return ventaService.listarVentas(
+                codigo,
+                metodoPago,
+                periodo,
+                fechaInicio,
+                fechaFin,
+                precioMin,
+                precioMax,
+                unidadesMin,
+                unidadesMax,
+                pageable
+        );
+    }
+
+    @GetMapping("/impacto/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','AYUDANTE')")
+    public ResponseEntity<ImpactoVentaDTO> verImpacto(@PathVariable Long id) {
+        return ResponseEntity.ok(ventaService.obtenerImpactoVenta(id));
     }
 }

@@ -12,23 +12,34 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Detalle_Vent {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idDV;
 
+    @Column(nullable = false)
     private Integer cantidad;
-    private Double precioUnitario;
-    private Double subTotal; //cantidad * precioUnitario
 
-    @ManyToOne
-    @JoinColumn(name = "prenda_id")
-    private Prenda prenda;
+    @Column(nullable = false)
+    private Double precioVentaUnitario;
 
-    @ManyToOne
-    @JoinColumn(name = "venta_id")
+    @Column(nullable = false)
+    private Double costoUnitario;
+
+    @Column(nullable = false)
+    private Double subtotal;
+
+    @Column(nullable = false)
+    private Integer stockAntes;
+
+    @Column(nullable = false)
+    private Integer stockDespues;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "venta_idVenta", nullable = false)
     private Venta venta;
 
-    @ManyToOne
-    @JoinColumn(name = "talla_id")
-    private Talla talla;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inventario_idInventario", nullable = false)
+    private Inventario inventario;
 }

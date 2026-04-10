@@ -1,29 +1,30 @@
 package com.upc.ep.Services;
 
-import com.upc.ep.DTO.PrendaDTO;
-import com.upc.ep.DTO.PrendaStockBajoDTO;
-import com.upc.ep.Entidades.Marca;
+import com.upc.ep.DTO.*;
 import com.upc.ep.Entidades.Prenda;
 
-import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 public interface PrendaService {
-    Prenda findById(Long id);
-    public PrendaDTO savePrenda(Prenda prenda);
-    public List<Prenda> listarPrendas();
-    void actualizarEstadoPrenda(Prenda prenda);
-    PrendaDTO putPrenda(Long id, PrendaDTO prendaDTO);
-    public boolean eliminarPrenda(Long id);
-    List<Prenda> listarPorMarca(Long idMarca);
-    List<Prenda> listarPorCategoria(Long idCategoria);
-    List<Prenda> listarPorCalidad(String calidad);
-    List<Prenda> listarPorEstado(String estado);
-    List<Marca> listarMarcas();
-    List<Prenda> listarPorRangoPrecio(Double min, Double max);
-    List<Prenda> listarPorFecha(LocalDate fechaRegistro);
-    boolean verificarPrendaExistente(Long marcaId, String calidad);
-    List<PrendaDTO> buscarPrendas(String descripcion, Long idMarca, Long idCategoria, String estado,
-                                  LocalDate fecha, LocalDate fechaDesde, LocalDate fechaHasta);
-    List<PrendaStockBajoDTO> listarStockBajo(Integer limite);
+    PrendaDTO registrarPrenda(PrendaDTO prendaDTO);
+    PrendaDTO editarPrenda(Long id, PrendaDTO prendaDTO);
+    void eliminarPrenda(Long id);
+    Prenda obtenerPrendaPorId(Long idPrenda);
+    List<PrendaListadoDTO> listarPrendasConStockYUltimoPrecio();
+    PrendaDetalleDTO obtenerDetallePrenda(Long id);
+    void cambiarEstado(Long idPrenda);
+    void activarPrenda(Long idPrenda);
+    List<PrendaCarritoDTO> listarPrendasDisponibles();
+    List<InventarioActivoDTO> listarInventarioPorPrenda(Long idPrenda);
+    List<Map<String, Object>> distribucionPorCategoria();
+    List<Map<String, Object>> distribucionPorMarca();
+    List<Map<String, Object>> distribucionPorEstado();
+    List<PrendaOlvidadaDTO> obtenerPrendasOlvidadas();
+    List<TopDTO> rankingPrendasMasVendidas();
+    List<StockBajoDTO> bajoStock(Integer limite);
+    PrendasTotalesDTO obtenerKPIPrendas();
+    Long obtenerPrendasAgotadas();
+    List<StockCategoriaDTO> obtenerStockPorCategoria();
+    List<PrendaDTO> obtenerPrendas();
 }

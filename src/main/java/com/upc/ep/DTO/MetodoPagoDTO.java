@@ -11,10 +11,7 @@ import java.io.Serializable;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class Detalle_PedDTO implements Serializable {
-    private Long idDP;
-
-    private PedidoDTO pedido;
-
-    private PrendaDTO prenda;
+public class MetodoPagoDTO implements Serializable {
+    private String metodoPago;
+    private Long total;
 }

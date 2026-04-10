@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Setter
 @Getter
@@ -14,8 +15,11 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class VentaDTO implements Serializable {
     private Long idVenta;
-    private String cliente;
+    private String codigo;
+    private Integer unidades;
+    private LocalDateTime fechaHora;
     private String metodoPago;
-    private LocalDateTime fechahoraVenta;
     private Double total;
+    private Boolean estado;
+    private List<Detalle_VentDTO> detalles;
 }
