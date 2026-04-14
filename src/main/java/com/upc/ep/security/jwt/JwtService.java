@@ -10,7 +10,7 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret}")
+    @Value("${jwt.secret:clave_por_defecto_super_segura_1234567890123456}")
     private String SECRET_KEY;
 
     private Key getSignKey() {
