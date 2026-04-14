@@ -16,9 +16,6 @@ public class UserService {
     }
 
     public Integer insertUserRol(Long user_id, Long rol_id) {
-        Integer result = 0;
-        userRepository.insertUserRol(user_id, rol_id);
-        return 1;
+        return userRepository.insertUserRol(user_id, rol_id);
     }
-
 }
