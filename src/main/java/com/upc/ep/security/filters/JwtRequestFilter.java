@@ -38,9 +38,9 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        if (path.equals("/Norca/authenticate") ||
-                path.startsWith("/swagger-ui") ||
-                path.startsWith("/v3/api-docs")) {
+        if (path.contains("/authenticate") ||
+                path.contains("/swagger-ui") ||
+                path.contains("/v3/api-docs")) {
 
             chain.doFilter(request, response);
             return;
