@@ -13,6 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class PrendaDetalleVentaDTO implements Serializable {
+    private String nombre;
     private String categoria;
     private String imagen;
     private String marca;

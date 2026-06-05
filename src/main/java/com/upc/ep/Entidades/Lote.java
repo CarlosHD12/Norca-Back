@@ -1,50 +1,82 @@
 package com.upc.ep.Entidades;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
+import lombok.*;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Setter
+@Table(
+        indexes = {
+                @Index(name = "idx_lote_fecha", columnList = "fecha_ingreso"),
+                @Index(name = "idx_lote_codigo", columnList = "codigo_lote"),
+                @Index(name = "idx_lote_activo", columnList = "activo")
+        }
+)
 @Getter
-@AllArgsConstructor
+@Setter
 @NoArgsConstructor
-public class Lote {
+@AllArgsConstructor
+@EqualsAndHashCode(of = "idLote")
+public class Lote extends Auditable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_lote")
     private Long idLote;
 
-    @Column(nullable = false)
-    private Integer numeroLote;
+    @NotBlank
+    @Size(max = 50)
+    @Column(name = "codigo_lote", nullable = false, unique = true, length = 50)
+    private String codigoLote;
 
+    @Positive
     @Column(nullable = false)
-    private Integer cantidad;
+    private Integer cantidadInicial;
 
-    @Column(nullable = false)
+    @PositiveOrZero
+    @Column(name = "stock_actual", nullable = false)
     private Integer stockActual;
 
-    @Column(nullable = false)
-    private Double precioCompraTotal;
+    @Positive
+    @Column(name = "precio_compra_total", nullable = false, precision = 12, scale = 2)
+    private BigDecimal precioCompraTotal;
 
-    @Column(nullable = false)
-    private Double precioVenta;
+    @Positive
+    @Column(name = "precio_venta", nullable = false, precision = 12, scale = 2)
+    private BigDecimal precioVenta;
 
-    @Column(nullable = false)
-    private LocalDate fechaIngreso;
+    @Column(name = "fecha_ingreso", nullable = false)
+    private LocalDateTime fechaIngreso;
 
     @Column(nullable = false)
     private Boolean activo = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "prenda_idPrenda", nullable = false)
+    @JoinColumn(name = "prenda_id_prenda", nullable = false)
     private Prenda prenda;
 
     @OneToMany(mappedBy = "lote", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Inventario> inventarios = new HashSet<>();
+
+    @PrePersist
+    public void prePersist() {
+        if (fechaIngreso == null) {
+            fechaIngreso = LocalDateTime.now();
+        }
+
+        if (stockActual == null) {
+            stockActual = cantidadInicial;
+        }
+
+        if (activo == null) {
+            activo = true;
+        }
+    }
 }

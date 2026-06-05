@@ -1,84 +1,113 @@
 package com.upc.ep.ServicesIMPL;
 
-import com.upc.ep.DTO.CategoriaDTO;
+import com.upc.ep.DTO.CategoriaRegistroDTO;
+import com.upc.ep.DTO.CategoriaResponseDTO;
+import com.upc.ep.DTO.CategoriaUpdateDTO;
 import com.upc.ep.Entidades.Categoria;
+import com.upc.ep.Entidades.Movimiento;
+import com.upc.ep.Entidades.Prenda;
 import com.upc.ep.Repositorio.CategoriaRepos;
+import com.upc.ep.Repositorio.MovimientoRepos;
 import com.upc.ep.Services.CategoriaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class CategoriaIMPL implements CategoriaService {
     @Autowired
     private CategoriaRepos categoriaRepos;
 
-    @Override
-    public CategoriaDTO registrarCategoria(CategoriaDTO categoriaDTO) {
-        Categoria categoria = new Categoria();
-        categoria.setNombre(categoriaDTO.getNombre());
-        Categoria nueva = categoriaRepos.save(categoria);
+    @Autowired
+    private MovimientoRepos movimientoRepos;
 
-        categoriaDTO.setIdCategoria(nueva.getIdCategoria());
-        return categoriaDTO;
+    @Override
+    @Transactional
+    public CategoriaResponseDTO registrarCategoria(CategoriaRegistroDTO dto) {
+        if (categoriaRepos.existsByNombre(dto.getNombre())) {throw new RuntimeException("Ya existe una categoría con ese nombre");}
+        Categoria categoria = new Categoria();
+        categoria.setNombre(dto.getNombre());
+        categoria.setActivo(true);
+        Categoria categoriaGuardada = categoriaRepos.save(categoria);
+        Movimiento movimiento = new Movimiento();
+        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_CATEGORIA);
+        movimiento.setMotivo("Se registró la categoría: " + categoriaGuardada.getNombre());
+        movimiento.setReferenciaId("CAT-" + categoriaGuardada.getIdCategoria());
+        movimientoRepos.save(movimiento);
+        return mapToResponse(categoriaGuardada);
+    }
+
+    private CategoriaResponseDTO mapToResponse(Categoria categoria) {
+        return CategoriaResponseDTO.builder()
+                .idCategoria(categoria.getIdCategoria())
+                .nombre(categoria.getNombre())
+                .activo(categoria.getActivo())
+                .build();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<CategoriaDTO> listarCategorias() {
-        return categoriaRepos.findAllByOrderByIdCategoriaDesc().stream()
-                .map(m -> {
-                    CategoriaDTO dto = new CategoriaDTO();
-                    dto.setIdCategoria(m.getIdCategoria());
-                    dto.setNombre(m.getNombre());
-                    return dto;
-                })
-                .collect(Collectors.toList());
+    public List<CategoriaResponseDTO> listarCategorias() {
+        List<Categoria> categorias = categoriaRepos.findAllByOrderByIdCategoriaDesc();
+        return categorias.stream().map(this::toCategoriaDTO).toList();
+    }
+
+    private CategoriaResponseDTO toCategoriaDTO(Categoria categoria) {
+        return CategoriaResponseDTO.builder()
+                .idCategoria(categoria.getIdCategoria())
+                .nombre(categoria.getNombre())
+                .activo(categoria.getActivo())
+                .build();
     }
 
     @Override
-    public CategoriaDTO actualizarCategoria(Long id, CategoriaDTO categoriaDTO) {
-        Categoria categoria = categoriaRepos.findById(id)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
-        categoria.setNombre(categoriaDTO.getNombre());
+    @Transactional
+    public CategoriaResponseDTO editarCategoria(Long idCategoria, CategoriaUpdateDTO dto) {
+        Categoria categoria = categoriaRepos.findById(idCategoria).orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
+        boolean existeNombre = categoriaRepos.existsByNombreIgnoreCase(dto.getNombre());
+        if (existeNombre && !categoria.getNombre().equalsIgnoreCase(dto.getNombre())) {throw new RuntimeException("Ya existe una categoría con ese nombre");}
+        categoria.setNombre(dto.getNombre());
         categoriaRepos.save(categoria);
-        categoriaDTO.setIdCategoria(id);
-        return categoriaDTO;
+        Movimiento movimiento = new Movimiento();
+        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.MODIFICACION_CATEGORIA);
+        movimiento.setMotivo("Se modificó la categoría: " + categoria.getNombre());
+        movimiento.setReferenciaId("CAT-" + categoria.getIdCategoria().toString());
+        movimientoRepos.save(movimiento);
+        return toCategoriaDTO(categoria);
     }
 
     @Override
-    public void eliminarCategoria(Long id) {
-        categoriaRepos.deleteById(id);
+    @Transactional
+    public void desactivarCategoria(Long idCategoria) {
+        Categoria categoria = categoriaRepos.findById(idCategoria).orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
+        if (!categoria.getActivo()) {throw new RuntimeException("La categoría ya está desactivada");}
+        boolean tienePrendasActivas =
+                categoria.getPrendas()
+                        .stream()
+                        .anyMatch(Prenda::getActivo);
+        if (tienePrendasActivas) {throw new RuntimeException("No se puede desactivar una categoría con prendas activas");}
+        categoria.setActivo(false);
+        categoriaRepos.save(categoria);
+        Movimiento movimiento = new Movimiento();
+        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.INHABILITACION_CATEGORIA);
+        movimiento.setMotivo("Se desactivó la categoría: " + categoria.getNombre());
+        movimiento.setReferenciaId("CAT-" + categoria.getIdCategoria().toString());
+        movimientoRepos.save(movimiento);
     }
 
     @Override
-    public Categoria buscarPorId(Long id) {
-        return categoriaRepos.findById(id)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
-    }
-
-    @Override
-    public void guardarImagen(Long id, MultipartFile file) {
-        try {
-            Categoria categoria = buscarPorId(id);
-            categoria.setImagenBytes(file.getBytes());
-            categoriaRepos.save(categoria);
-        } catch (IOException e) {
-            throw new RuntimeException("Error al guardar imagen");
-        }
-    }
-
-    @Override
-    public byte[] obtenerImagen(Long id) {
-        Categoria categoria = buscarPorId(id);
-        if (categoria.getImagenBytes() == null) {
-            throw new RuntimeException("No hay imagen");
-        }
-        return categoria.getImagenBytes();
+    @Transactional
+    public void activarCategoria(Long idCategoria) {
+        Categoria categoria = categoriaRepos.findById(idCategoria).orElseThrow(() -> new RuntimeException("Categoría no encontrada"));
+        if (categoria.getActivo()) {throw new RuntimeException("La categoría ya está activa");}
+        categoria.setActivo(true);
+        categoriaRepos.save(categoria);
+        Movimiento movimiento = new Movimiento();
+        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_CATEGORIA);
+        movimiento.setMotivo("Se activó la categoría: " + categoria.getNombre());
+        movimiento.setReferenciaId("CAT-" + categoria.getIdCategoria().toString());
+        movimientoRepos.save(movimiento);
     }
 }

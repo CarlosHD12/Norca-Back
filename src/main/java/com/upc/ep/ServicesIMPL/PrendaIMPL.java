@@ -3,16 +3,22 @@ package com.upc.ep.ServicesIMPL;
 import com.upc.ep.DTO.*;
 import com.upc.ep.Entidades.*;
 import com.upc.ep.Repositorio.*;
+import com.upc.ep.Services.LoteService;
 import com.upc.ep.Services.PrendaService;
 
-import org.springframework.transaction.annotation.Transactional;
+import com.upc.ep.Specification.PrendaSpecification;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class PrendaIMPL implements PrendaService {
@@ -28,392 +34,369 @@ public class PrendaIMPL implements PrendaService {
     @Autowired
     private LoteRepos loteRepos;
 
+    @Autowired
+    private MetricaRepos metricaRepos;
+
+    @Autowired
+    private LoteService loteService;
+
+    @Autowired
+    private MovimientoRepos movimientoRepos;
+    @Autowired
+    private VentaRepos ventaRepos;
+
     @Override
     @Transactional
-    public PrendaDTO registrarPrenda(PrendaDTO prendaDTO) {
+    public PrendaResponseDTO registrarPrenda(PrendaRegistroDTO dto) {
+        Categoria categoria = categoriaRepos
+                .findByIdCategoriaAndActivoTrue(dto.getCategoriaId())
+                .orElseThrow(() -> new RuntimeException("Categoría no encontrada o inactiva"));
+        Marca marca = marcaRepos
+                .findByIdMarcaAndActivoTrue(dto.getMarcaId())
+                .orElseThrow(() -> new RuntimeException("Marca no encontrada o inactiva"));
+        String codigo = generarCodigo();
         Prenda prenda = new Prenda();
-        prenda.setMaterial(prendaDTO.getMaterial());
-        prenda.setDescripcion(prendaDTO.getDescripcion());
-        prenda.setColores(prendaDTO.getColores() != null ? prendaDTO.getColores() : new ArrayList<>());
-        prenda.setFechaRegistro(LocalDate.now());
-        prenda.setEstado("SIN LOTES");
-        prenda.setCategoria(categoriaRepos.findById(
-                        prendaDTO.getCategoria().getIdCategoria())
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada"))
-        );
-        prenda.setMarca(marcaRepos.findById(
-                        prendaDTO.getMarca().getIdMarca())
-                .orElseThrow(() -> new RuntimeException("Marca no encontrada"))
-        );
-        Prenda guardada = prendaRepos.save(prenda);
-        prendaDTO.setIdPrenda(guardada.getIdPrenda());
-        prendaDTO.setEstado(guardada.getEstado());
-        return prendaDTO;
+        prenda.setCodigo(codigo);
+        prenda.setNombre(dto.getNombre().trim());
+        prenda.setMaterial(dto.getMaterial().trim());
+        prenda.setDescripcion(dto.getDescripcion() != null ? dto.getDescripcion().trim() : null);
+        prenda.setImagenUrl(dto.getImagenUrl() != null ? dto.getImagenUrl().trim() : null);
+        prenda.setColores(dto.getColores() != null ? dto.getColores() : new ArrayList<>());
+        prenda.setCategoria(categoria);
+        prenda.setMarca(marca);
+        prenda.setEstado(Prenda.EstadoPrenda.SIN_LOTES);
+        prenda.setActivo(true);
+        Prenda prendaGuardada = prendaRepos.save(prenda);
+        Metrica metrica = new Metrica();
+        metrica.setPrenda(prendaGuardada);
+        metrica.setUnidadesVendidas(0);
+        metrica.setIngresosTotales(BigDecimal.ZERO);
+        metrica.setGananciaAcumulada(BigDecimal.ZERO);
+        metrica.setInversionTotal(BigDecimal.ZERO);
+        metrica.setVentasRealizadas(0);
+        metricaRepos.save(metrica);
+        prendaGuardada.setMetrica(metrica);
+        Movimiento movimiento = new Movimiento();
+        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_PRENDA);
+        movimiento.setMotivo("Se registró la prenda: " + prendaGuardada.getCodigo());
+        movimiento.setReferenciaId(prendaGuardada.getCodigo());
+        movimientoRepos.save(movimiento);
+        return mapToResponse(prendaGuardada);
+    }
+
+    private String generarCodigo() {
+        String codigo;
+        do {
+            codigo = "PRD-" + UUID.randomUUID()
+                            .toString()
+                            .substring(0, 8)
+                            .toUpperCase();
+        } while (prendaRepos.existsByCodigo(codigo));
+        return codigo;
+    }
+
+    private PrendaResponseDTO mapToResponse(Prenda prenda) {
+        return PrendaResponseDTO.builder()
+                .idPrenda(prenda.getIdPrenda())
+                .codigo(prenda.getCodigo())
+                .nombre(prenda.getNombre())
+                .material(prenda.getMaterial())
+                .descripcion(prenda.getDescripcion())
+                .imagenUrl(prenda.getImagenUrl())
+                .colores(prenda.getColores())
+                .categoria(prenda.getCategoria().getNombre())
+                .marca(prenda.getMarca().getNombre())
+                .estado(prenda.getEstado().name())
+                .activo(prenda.getActivo())
+                .fechaRegistro(prenda.getFechaRegistro())
+                .build();
     }
 
     @Override
     @Transactional
-    public PrendaDTO editarPrenda(Long id, PrendaDTO prendaDTO) {
-        Prenda prenda = prendaRepos.findById(id)
-                .orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
-        prenda.setMaterial(prendaDTO.getMaterial());
-        prenda.setDescripcion(prendaDTO.getDescripcion());
-        prenda.setColores(prendaDTO.getColores() != null ? prendaDTO.getColores() : new ArrayList<>());
-        if (prendaDTO.getEstado() != null) {
-            prenda.setEstado(prendaDTO.getEstado());
-        }
-        if (!prenda.getCategoria().getIdCategoria().equals(prendaDTO.getCategoria().getIdCategoria())) {
-            prenda.setCategoria(
-                    categoriaRepos.findById(prendaDTO.getCategoria().getIdCategoria())
-                            .orElseThrow(() -> new RuntimeException("Categoría no encontrada"))
-            );
-        }
-        if (!prenda.getMarca().getIdMarca().equals(prendaDTO.getMarca().getIdMarca())) {
-            prenda.setMarca(
-                    marcaRepos.findById(prendaDTO.getMarca().getIdMarca())
-                            .orElseThrow(() -> new RuntimeException("Marca no encontrada"))
-            );
-        }
-        Prenda guardada = prendaRepos.save(prenda);
-        return new PrendaDTO(
-                guardada.getIdPrenda(),
-                guardada.getMaterial(),
-                guardada.getFechaRegistro(),
-                guardada.getEstado(),
-                guardada.getDescripcion(),
-                guardada.getColores(),
-                new CategoriaDTO(
-                        guardada.getCategoria().getIdCategoria(),
-                        guardada.getCategoria().getNombre()
-                ),
-                new MarcaDTO(
-                        guardada.getMarca().getIdMarca(),
-                        guardada.getMarca().getNombre()
-                )
-        );
+    public PrendaResponseDTO actualizarPrenda(Long idPrenda, PrendaUpdateDTO dto) {
+        Prenda prenda = prendaRepos.findById(idPrenda).orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
+        if (!prenda.getActivo()) {throw new RuntimeException("La prenda está inactiva");}
+        Categoria categoria = categoriaRepos.findByIdCategoriaAndActivoTrue(dto.getCategoriaId()).orElseThrow(() -> new RuntimeException("Categoría no encontrada o inactiva"));
+        Marca marca = marcaRepos.findByIdMarcaAndActivoTrue(dto.getMarcaId()).orElseThrow(() -> new RuntimeException("Marca no encontrada o inactiva"));
+        prenda.setNombre(dto.getNombre().trim());
+        prenda.setMaterial(dto.getMaterial().trim());
+        prenda.setDescripcion(dto.getDescripcion() != null ? dto.getDescripcion().trim() : null);
+        prenda.setImagenUrl(dto.getImagenUrl() != null ? dto.getImagenUrl().trim() : null);
+        prenda.setColores(dto.getColores() != null ? dto.getColores() : new ArrayList<>());
+        prenda.setCategoria(categoria);
+        prenda.setMarca(marca);
+        Prenda prendaActualizada = prendaRepos.save(prenda);
+        Movimiento movimiento = new Movimiento();
+        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.MODIFICACION_PRENDA);
+        movimiento.setMotivo("Se modificó la prenda: " + prendaActualizada.getCodigo());
+        movimiento.setReferenciaId(prendaActualizada.getCodigo());
+        movimientoRepos.save(movimiento);
+        return mapToResponse(prendaActualizada);
     }
 
     @Override
     @Transactional
-    public void eliminarPrenda(Long id) {
-        Prenda prenda = prendaRepos.findById(id)
-                .orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
-        prendaRepos.delete(prenda);
-    }
-
-    @Override
-    @Transactional
-    public Prenda obtenerPrendaPorId(Long idPrenda) {
-        Prenda prenda = prendaRepos.findById(idPrenda)
-                .orElseThrow(() -> new RuntimeException("Prenda no encontrada con id: " + idPrenda));
-        prenda.getColores().size();
-        prenda.getCategoria().getNombre();
-        prenda.getMarca().getNombre();
-        prenda.getLotes().size();
-        if (prenda.getMetrica() != null) prenda.getMetrica().getIdMetrica();
-
-        return prenda;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<PrendaListadoDTO> listarPrendasConStockYUltimoPrecio() {
-
-        List<Prenda> prendas = prendaRepos.findAllPrendasOrdenDesc();
-        List<PrendaListadoDTO> listado = new ArrayList<>();
-        for (Prenda p : prendas) {
-
-            Long categoriaId = p.getCategoria() != null ? p.getCategoria().getIdCategoria() : null;
-            String categoriaNombre = p.getCategoria() != null ? p.getCategoria().getNombre() : "N/A";
-
-            Long marcaId = p.getMarca() != null ? p.getMarca().getIdMarca() : null;
-            String marcaNombre = p.getMarca() != null ? p.getMarca().getNombre() : "N/A";
-            Lote ultimoLote = loteRepos
-                    .findTopByPrendaIdPrendaAndActivoTrueOrderByFechaIngresoDescIdLoteDesc(p.getIdPrenda());
-            int stockActual = 0;
-            double precioUltimo = 0.0;
-            if (ultimoLote != null) {
-                stockActual = ultimoLote.getStockActual();
-                precioUltimo = ultimoLote.getPrecioVenta();
-            }
-            PrendaListadoDTO dto = new PrendaListadoDTO(
-                    p.getIdPrenda(),
-                    categoriaId,
-                    categoriaNombre,
-                    marcaId,
-                    marcaNombre,
-                    p.getMaterial(),
-                    p.getDescripcion(),
-                    p.getEstado(),
-                    stockActual,
-                    precioUltimo,
-                    p.getColores()
-            );
-            listado.add(dto);
-        }
-        return listado;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public PrendaDetalleDTO obtenerDetallePrenda(Long idPrenda) {
-        Prenda prenda = prendaRepos.obtenerDetallePrenda(idPrenda)
-                .orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
-        Lote ultimoLote = prenda.getLotes().stream()
-                .max(Comparator
-                        .comparing(Lote::getFechaIngreso)
-                        .thenComparing(Lote::getIdLote))
-                .orElse(null);
-
-        LoteDetalleDTO loteDTO = null;
-
-        if (ultimoLote != null) {
-            List<HistorialDTO> historiales = ultimoLote.getInventarios().stream()
-                    .sorted((a, b) -> b.getIdInventario().compareTo(a.getIdInventario()))
-                    .map(inv -> {
-
-                        HistorialDTO dtoHist = new HistorialDTO();
-
-                        dtoHist.setIdInventario(inv.getIdInventario());
-                        dtoHist.setStock(inv.getStock());
-
-                        Talla talla = inv.getTalla();
-                        TallaDTO tallaDTO = new TallaDTO();
-                        tallaDTO.setIdTalla(talla.getIdTalla());
-                        tallaDTO.setNombre(talla.getNombre());
-
-                        dtoHist.setTalla(tallaDTO);
-
-                        return dtoHist;
-                    })
-                    .toList();
-            loteDTO = new LoteDetalleDTO();
-            loteDTO.setIdLote(ultimoLote.getIdLote());
-            loteDTO.setNumeroLote(ultimoLote.getNumeroLote());
-            loteDTO.setCantidad(ultimoLote.getCantidad());
-            loteDTO.setStockActual(ultimoLote.getStockActual());
-            loteDTO.setPrecioCompraTotal(ultimoLote.getPrecioCompraTotal());
-            loteDTO.setPrecioVenta(ultimoLote.getPrecioVenta());
-            loteDTO.setFechaIngreso(ultimoLote.getFechaIngreso());
-            loteDTO.setActivo(ultimoLote.getActivo());
-            loteDTO.setHistoriales(historiales);
-        }
-        PrendaDetalleDTO dto = new PrendaDetalleDTO();
-        dto.setIdPrenda(prenda.getIdPrenda());
-        dto.setMaterial(prenda.getMaterial());
-        dto.setFechaRegistro(prenda.getFechaRegistro());
-        dto.setEstado(prenda.getEstado());
-        dto.setDescripcion(prenda.getDescripcion());
-        dto.setColores(prenda.getColores());
-        dto.setNombreCategoria(prenda.getCategoria().getNombre());
-
-        if (prenda.getCategoria().getImagenBytes() != null) {
-            String base64 = Base64.getEncoder()
-                    .encodeToString(prenda.getCategoria().getImagenBytes());
-            dto.setImagen("data:image/png;base64," + base64);
-        }
-
-        dto.setNombreMarca(prenda.getMarca().getNombre());
-        dto.setLoteActivo(loteDTO);
-
-        return dto;
-    }
-
-    @Override
-    @Transactional
-    public void cambiarEstado(Long idPrenda) {
-        Prenda prenda = prendaRepos.findById(idPrenda)
-                .orElseThrow(() -> new RuntimeException("Prenda no encontrada con id: " + idPrenda));
+    public void eliminarPrenda(Long idPrenda) {
+        Prenda prenda = prendaRepos.findById(idPrenda).orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
+        if (!prenda.getActivo()) {throw new RuntimeException("La prenda ya se encuentra inactiva");}
+        boolean tieneStockDisponible =
+                prenda.getLotes()
+                        .stream()
+                        .anyMatch(lote -> lote.getActivo() && lote.getStockActual() > 0);
+        if (tieneStockDisponible) {throw new RuntimeException("No se puede inhabilitar una prenda con stock disponible");}
         prenda.setEstadoAnterior(prenda.getEstado());
-        prenda.setEstado("INACTIVO");
+        prenda.setEstado(Prenda.EstadoPrenda.INHABILITADA);
+        prenda.setActivo(false);
         prendaRepos.save(prenda);
+        Movimiento movimiento = new Movimiento();
+        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.INHABILITACION_PRENDA);
+        movimiento.setMotivo("Se inhabilitó la prenda: " + prenda.getCodigo());
+        movimiento.setReferenciaId(prenda.getCodigo());
+        movimientoRepos.save(movimiento);
+    }
+
+    @Override
+    public PrendaDetalleDTO obtenerDetallePrenda(Long idPrenda) {
+        Prenda prenda = prendaRepos
+                .findDetalleByIdPrenda(idPrenda)
+                .orElseThrow(() ->
+                        new RuntimeException("Prenda no encontrada"));
+        Lote ultimoLote = prenda.getLotes()
+                .stream()
+                .filter(Lote::getActivo)
+                .max(Comparator.comparing(Lote::getFechaIngreso))
+                .orElseThrow(() -> new RuntimeException("La prenda no tiene lotes activos"));
+        List<InventarioHistorialDTO> inventarios =
+                ultimoLote.getInventarios()
+                        .stream()
+                        .map(inv ->
+                                InventarioHistorialDTO.builder()
+                                        .talla(inv.getTalla().getNombre())
+                                        .stock(inv.getStock())
+                                        .build()).toList();
+        MetricaLoteDTO metricas =
+                loteService.obtenerMetricasLote(
+                        ultimoLote.getIdLote()
+                );
+        return PrendaDetalleDTO.builder()
+                .idPrenda(prenda.getIdPrenda())
+                .codigo(prenda.getCodigo())
+                .nombre(prenda.getNombre())
+                .imagenUrl(prenda.getImagenUrl())
+                .categoria(prenda.getCategoria().getNombre())
+                .marca(prenda.getMarca().getNombre())
+                .estado(prenda.getEstado().name())
+                .fechaRegistro(prenda.getFechaRegistro())
+                .material(prenda.getMaterial())
+                .descripcion(prenda.getDescripcion())
+                .colores(prenda.getColores())
+                .idLote(ultimoLote.getIdLote())
+                .cantidadInicial(ultimoLote.getCantidadInicial())
+                .stockActual(ultimoLote.getStockActual())
+                .precioVenta(ultimoLote.getPrecioVenta())
+                .fechaIngreso(ultimoLote.getFechaIngreso())
+                .inventarios(inventarios)
+                .metricas(metricas)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void validarPrendaAgotada(Long idPrenda) {
+        Prenda prenda = prendaRepos.findById(idPrenda).orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
+        if (prenda.getEstado() == Prenda.EstadoPrenda.INHABILITADA) {return;}
+        boolean tieneLotesDisponibles =
+                prenda.getLotes()
+                        .stream()
+                        .anyMatch(lote -> Boolean.TRUE.equals(lote.getActivo()) && lote.getStockActual() > 0);
+        Prenda.EstadoPrenda estadoActual = prenda.getEstado();
+        if (tieneLotesDisponibles) {
+            if (estadoActual != Prenda.EstadoPrenda.DISPONIBLE) {
+                prenda.setEstadoAnterior(estadoActual);
+                prenda.setEstado(Prenda.EstadoPrenda.DISPONIBLE);
+                prendaRepos.save(prenda);
+                Movimiento movimiento = new Movimiento();
+                movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.CAMBIO_ESTADO_PRENDA);
+                movimiento.setMotivo("La prenda pasó a DISPONIBLE");
+                movimiento.setReferenciaId(prenda.getCodigo());
+                movimientoRepos.save(movimiento);
+            }
+        } else {
+            if (estadoActual != Prenda.EstadoPrenda.AGOTADO) {
+                prenda.setEstadoAnterior(estadoActual);
+                prenda.setEstado(Prenda.EstadoPrenda.AGOTADO);
+                prendaRepos.save(prenda);
+                Movimiento movimiento = new Movimiento();
+                movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.PRENDA_AGOTADA);
+                movimiento.setMotivo("La prenda quedó agotada");
+                movimiento.setReferenciaId(prenda.getCodigo());
+                movimientoRepos.save(movimiento);
+            }
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PrendaListResponseDTO> listarPrendasFiltradas(
+            String search,
+            String categoria,
+            String marca,
+            String estado,
+            Integer stockMin,
+            Integer stockMax,
+            BigDecimal precioMin,
+            BigDecimal precioMax,
+            Pageable pageable
+    ) {
+        Specification<Prenda> specification =
+                PrendaSpecification.filtrarPrendas(
+                        search,
+                        categoria,
+                        marca,
+                        estado,
+                        stockMin,
+                        stockMax,
+                        precioMin,
+                        precioMax
+                );
+        Page<Prenda> prendas =
+                prendaRepos.findAll(
+                        specification,
+                        pageable
+                );
+        return prendas.map(this::toListDTO);
+    }
+
+    private PrendaListResponseDTO toListDTO(Prenda prenda) {
+        Optional<Lote> loteFIFO = prenda.getLotes()
+                .stream()
+                .filter(Lote::getActivo)
+                .filter(l -> l.getStockActual() > 0)
+                .min(Comparator.comparing(Lote::getFechaIngreso));
+        List<String> colores = prenda.getColores()
+                .stream()
+                .limit(3)
+                .toList();
+        Integer stockTotal = prenda.getLotes()
+                .stream()
+                .filter(Lote::getActivo)
+                .mapToInt(Lote::getStockActual)
+                .sum();
+        return PrendaListResponseDTO.builder()
+                .idPrenda(prenda.getIdPrenda())
+                .codigo(prenda.getCodigo())
+                .imagenUrl(prenda.getImagenUrl())
+                .nombre(prenda.getNombre())
+                .categoria(prenda.getCategoria().getNombre())
+                .marca(prenda.getMarca().getNombre())
+                .material(prenda.getMaterial())
+                .colores(colores)
+                .precioVenta(loteFIFO.map(Lote::getPrecioVenta).orElse(BigDecimal.ZERO))
+                .stock(stockTotal)
+                .estado(prenda.getEstado().name())
+                .build();
     }
 
     @Override
     @Transactional
     public void activarPrenda(Long idPrenda) {
-        Prenda prenda = prendaRepos.findById(idPrenda)
-                .orElseThrow(() -> new RuntimeException("Prenda no encontrada con id: " + idPrenda));
+        Prenda prenda = prendaRepos.findById(idPrenda).orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
+        if (prenda.getActivo()) {throw new RuntimeException("La prenda ya se encuentra activa");}
+        prenda.setActivo(true);
         if (prenda.getEstadoAnterior() != null) {
             prenda.setEstado(prenda.getEstadoAnterior());
         } else {
-            prenda.setEstado("SIN LOTES");
+            prenda.setEstado(Prenda.EstadoPrenda.SIN_LOTES);
         }
         prendaRepos.save(prenda);
+        Movimiento movimiento = new Movimiento();
+        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_PRENDA);
+        movimiento.setMotivo("Se reactivó la prenda: " + prenda.getCodigo());
+        movimiento.setReferenciaId(prenda.getCodigo());
+        movimientoRepos.save(movimiento);
+    }
+
+    @Override
+    public PrendaKpiResponseDTO obtenerKpis() {
+        LocalDateTime ultimoMes = LocalDateTime.now().minusMonths(1);
+        LocalDateTime ultimaSemana = LocalDateTime.now().minusWeeks(1);
+        long totalPrendas = prendaRepos.countByActivoTrue();
+        long prendasUltimoMes = prendaRepos.countByFechaRegistroAfter(ultimoMes);
+        long prendasDisponibles = prendaRepos.countByEstado(Prenda.EstadoPrenda.DISPONIBLE);
+        long disponiblesUltimaSemana = prendaRepos.countByEstadoAndFechaRegistroAfter(Prenda.EstadoPrenda.DISPONIBLE, ultimaSemana);
+        long prendasAgotadas = prendaRepos.countByEstado(Prenda.EstadoPrenda.AGOTADO);
+        long agotadasUltimaSemana = movimientoRepos.countByTipoMovimientoAndFechaAfter(Movimiento.TipoMovimiento.PRENDA_AGOTADA, ultimaSemana);
+        long lotesActivos = loteRepos.countByActivoTrue();
+        long lotesUltimoMes = loteRepos.countByFechaIngresoAfter(ultimoMes);
+        BigDecimal valorTotalInventario = loteRepos.obtenerValorTotalInventario();
+        BigDecimal inversionUltimoMes = loteRepos.obtenerInversionUltimoMes(ultimoMes).setScale(2, RoundingMode.HALF_UP);
+        return PrendaKpiResponseDTO.builder()
+                .totalPrendas(totalPrendas)
+                .prendasUltimoMes(prendasUltimoMes)
+                .prendasDisponibles(prendasDisponibles)
+                .disponiblesUltimaSemana(disponiblesUltimaSemana)
+                .prendasAgotadas(prendasAgotadas)
+                .agotadasUltimaSemana(agotadasUltimaSemana)
+                .lotesActivos(lotesActivos)
+                .lotesUltimoMes(lotesUltimoMes)
+                .valorTotalInventario(valorTotalInventario)
+                .inversionUltimoMes(inversionUltimoMes)
+                .build();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<PrendaCarritoDTO> listarPrendasDisponibles() {
-        return prendaRepos.findByEstadoOrderByIdDesc("DISPONIBLE")
+    public PrendaQuickDetalleDTO obtenerDetalleRapido(Long idPrenda) {
+        Prenda prenda = prendaRepos.findById(idPrenda).orElseThrow(() -> new EntityNotFoundException("Prenda no encontrada con id: " + idPrenda));        Integer stockTotal = prenda.getLotes()
                 .stream()
-                .map(prenda -> {
-                    PrendaCarritoDTO dto = new PrendaCarritoDTO();
-                    dto.setIdPrenda(prenda.getIdPrenda());
-                    dto.setCategoria(prenda.getCategoria().getNombre());
-                    dto.setMarca(prenda.getMarca().getNombre());
-                    dto.setMaterial(prenda.getMaterial());
-                    dto.setDescripcion(prenda.getDescripcion());
-                    if (prenda.getCategoria().getImagenBytes() != null) {
-                        dto.setImagen(Base64.getEncoder()
-                                .encodeToString(prenda.getCategoria().getImagenBytes()));
-                    }
-
-                    List<Lote> lotesActivos = prenda.getLotes().stream()
-                            .filter(l -> Boolean.TRUE.equals(l.getActivo()) && l.getStockActual() > 0)
-                            .toList();
-                    Lote loteMasAntiguo = lotesActivos.stream()
-                            .min(Comparator
-                                    .comparing(Lote::getFechaIngreso)
-                                    .thenComparing(Lote::getIdLote))
-                            .orElse(null);
-                    dto.setStock(
-                            loteMasAntiguo != null ? loteMasAntiguo.getStockActual() : 0
-                    );
-                    dto.setPrecioVenta(
-                            loteMasAntiguo != null ? loteMasAntiguo.getPrecioVenta() : 0.0
-                    );
-                    return dto;
-                })
-                .toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventarioActivoDTO> listarInventarioPorPrenda(Long idPrenda) {
-        List<Inventario> inventarios = prendaRepos.findInventarioActivoFIFO(idPrenda);
-        if (inventarios.isEmpty()) return List.of();
-        Long loteMasAntiguo = inventarios.get(0).getLote().getIdLote();
-        return inventarios.stream()
-                .filter(i -> i.getLote().getIdLote().equals(loteMasAntiguo))
-                .map(i -> {
-                    Lote l = i.getLote();
-                    return new InventarioActivoDTO(
-                            l.getIdLote(),
-                            l.getStockActual(),
-                            l.getPrecioVenta(),
-                            i.getIdInventario(),
-                            i.getStock(),
-                            i.getTalla().getNombre()
-                    );
-                })
-                .toList();
-    }
-
-    private List<Map<String, Object>> convertirAListaMapa(List<Object[]> resultados, String keyName) {
-        List<Map<String, Object>> lista = new ArrayList<>();
-        for (Object[] r : resultados) {
-            Map<String, Object> mapa = new HashMap<>();
-            mapa.put(keyName, r[0]);
-            mapa.put("total", r[1]);
-            lista.add(mapa);
-        }
-        return lista;
-    }
-
-    @Override
-    public List<Map<String, Object>> distribucionPorCategoria() {
-        return convertirAListaMapa(prendaRepos.countByCategoria(), "categoria");
-    }
-
-    @Override
-    public List<Map<String, Object>> distribucionPorMarca() {
-        return convertirAListaMapa(prendaRepos.countByMarca(), "marca");
-    }
-
-    @Override
-    public List<Map<String, Object>> distribucionPorEstado() {
-        return convertirAListaMapa(prendaRepos.countByEstado(), "estado");
-    }
-
-    @Override
-    public List<PrendaOlvidadaDTO> obtenerPrendasOlvidadas() {
-        LocalDateTime fechaLimite = LocalDateTime.now().minusDays(30);
-        return prendaRepos.findPrendasOlvidadas(fechaLimite);
-    }
-
-    @Override
-    public List<TopDTO> rankingPrendasMasVendidas() {
-        List<Object[]> resultados = prendaRepos.rankingPrendasMasVendidas();
-        List<TopDTO> lista = new ArrayList<>();
-        for (Object[] r : resultados) {
-            TopDTO dto = new TopDTO();
-            dto.setIdPrenda((Long) r[0]);
-            dto.setCategoria((String) r[1]);
-            dto.setMarca((String) r[2]);
-            dto.setMaterial((String) r[3]);
-            dto.setDescripcion((String) r[4]);
-            dto.setUnidadesVendidas((Long) r[5]);
-            lista.add(dto);
-        }
-        return lista;
-    }
-
-    @Override
-    public List<StockBajoDTO> bajoStock(Integer limite) {
-        if (limite == null) {
-            limite = 5;
-        }
-        return prendaRepos.bajoStock(limite);
-    }
-
-    @Override
-    public PrendasTotalesDTO obtenerKPIPrendas() {
-        LocalDate hoy = LocalDate.now();
-        LocalDate inicioMesActual = hoy.minusMonths(1);
-        LocalDate inicioMesAnterior = hoy.minusMonths(2);
-        Long total = prendaRepos.totalPrendas();
-        Long ultimoMes = prendaRepos.prendasDesde(inicioMesActual);
-        Long mesAnterior = prendaRepos.prendasEntre(inicioMesAnterior, inicioMesActual);
-        double crecimiento = 0;
-        if (mesAnterior > 0) {
-            crecimiento = ((double) (ultimoMes - mesAnterior) / mesAnterior) * 100;
-        }
-
-        return new PrendasTotalesDTO(
-                total,
-                ultimoMes,
-                crecimiento
-        );
-    }
-
-    @Override
-    public Long obtenerPrendasAgotadas() {
-        return prendaRepos.totalPrendasAgotadas();
-    }
-
-    @Override
-    public List<StockCategoriaDTO> obtenerStockPorCategoria() {
-        return prendaRepos.stockPorCategoria();
-    }
-
-    private PrendaDTO mapToDTO(Prenda prenda) {
-        PrendaDTO dto = new PrendaDTO();
-        dto.setIdPrenda(prenda.getIdPrenda());
-        dto.setMaterial(prenda.getMaterial());
-        dto.setDescripcion(prenda.getDescripcion());
-        dto.setFechaRegistro(prenda.getFechaRegistro());
-        dto.setEstado(prenda.getEstado());
-        dto.setColores(prenda.getColores());
-        CategoriaDTO catDTO = new CategoriaDTO();
-        catDTO.setIdCategoria(prenda.getCategoria().getIdCategoria());
-        catDTO.setNombre(prenda.getCategoria().getNombre());
-        dto.setCategoria(catDTO);
-
-        MarcaDTO marDTO = new MarcaDTO();
-        marDTO.setIdMarca(prenda.getMarca().getIdMarca());
-        marDTO.setNombre(prenda.getMarca().getNombre());
-        dto.setMarca(marDTO);
-
-        return dto;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<PrendaDTO> obtenerPrendas() {
-        return prendaRepos.findAll()
+                .filter(Lote::getActivo)
+                .mapToInt(Lote::getStockActual)
+                .sum();
+        Integer lotesActivos = (int) prenda.getLotes()
                 .stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
+                .filter(Lote::getActivo)
+                .count();
+        Long unidadesVendidasUltimos30Dias = ventaRepos.obtenerUnidadesVendidas(idPrenda, LocalDateTime.now().minusDays(30));
+        Lote loteFIFO = prenda.getLotes()
+                .stream()
+                .filter(Lote::getActivo)
+                .filter(l -> l.getStockActual() > 0)
+                .min(Comparator.comparing(Lote::getFechaIngreso))
+                .orElse(null);
+        LoteFIFODTO loteFifoDTO = null;
+        if (loteFIFO != null) {
+            List<InventarioHistorialDTO> inventarios =
+                    loteFIFO.getInventarios()
+                            .stream()
+                            .sorted(Comparator.comparing(inv -> inv.getTalla().getNombre()))
+                            .map(inv -> InventarioHistorialDTO.builder()
+                                    .idInventario(inv.getIdInventario())
+                                    .talla(inv.getTalla().getNombre())
+                                    .stock(inv.getStock())
+                                    .build()).toList();
+            loteFifoDTO = LoteFIFODTO.builder()
+                    .idLote(loteFIFO.getIdLote())
+                    .codigoLote(loteFIFO.getCodigoLote())
+                    .activo(loteFIFO.getActivo())
+                    .fechaIngreso(loteFIFO.getFechaIngreso())
+                    .cantidadInicial(loteFIFO.getCantidadInicial())
+                    .stockActual(loteFIFO.getStockActual())
+                    .precioVenta(loteFIFO.getPrecioVenta())
+                    .inventarios(inventarios)
+                    .build();
+        }
+        return PrendaQuickDetalleDTO.builder()
+                .idPrenda(prenda.getIdPrenda())
+                .codigo(prenda.getCodigo())
+                .nombre(prenda.getNombre())
+                .imagenUrl(prenda.getImagenUrl())
+                .estado(prenda.getEstado().name())
+                .stockTotal(stockTotal)
+                .lotesActivos(lotesActivos)
+                .unidadesVendidasUltimos30Dias(unidadesVendidasUltimos30Dias)
+                .loteFIFO(loteFifoDTO)
+                .build();
     }
+
 }

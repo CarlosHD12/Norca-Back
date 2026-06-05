@@ -1,15 +1,14 @@
 package com.upc.ep.Controller;
 
-import com.upc.ep.DTO.CategoriaDTO;
-import com.upc.ep.Entidades.Categoria;
+import com.upc.ep.DTO.CategoriaRegistroDTO;
+import com.upc.ep.DTO.CategoriaResponseDTO;
+import com.upc.ep.DTO.CategoriaUpdateDTO;
 import com.upc.ep.Services.CategoriaService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -19,49 +18,35 @@ public class CategoriaController {
     @Autowired
     private CategoriaService categoriaService;
 
-    @PostMapping("/post/categoria")
+    @PostMapping("/crear/categoria")
     @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
-    public ResponseEntity<CategoriaDTO> crearCategoria(@RequestBody CategoriaDTO categoriaDTO) {
-        CategoriaDTO nuevaCategoria = categoriaService.registrarCategoria(categoriaDTO);
-        return new ResponseEntity<>(nuevaCategoria, HttpStatus.CREATED);
+    public CategoriaResponseDTO registrarCategoria(@Valid @RequestBody CategoriaRegistroDTO dto) {
+        return categoriaService.registrarCategoria(dto);
     }
 
-    @GetMapping("/get/categoria")
+    @GetMapping("/listar/categorias")
     @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
-    public ResponseEntity<List<CategoriaDTO>> listarCategorias() {
-        List<CategoriaDTO> categorias = categoriaService.listarCategorias();
-        return new ResponseEntity<>(categorias, HttpStatus.OK);
+    public ResponseEntity<List<CategoriaResponseDTO>> listarCategorias() {
+        return ResponseEntity.ok(categoriaService.listarCategorias());
     }
 
-    @PutMapping("/put/categoria/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
-    public ResponseEntity<CategoriaDTO> actualizarCategoria(@PathVariable Long id, @RequestBody CategoriaDTO categoriaDTO) {
-        CategoriaDTO actualizada = categoriaService.actualizarCategoria(id, categoriaDTO);
-        return new ResponseEntity<>(actualizada, HttpStatus.OK);
+    @PutMapping("/editar/categoria/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CategoriaResponseDTO> editarCategoria(@PathVariable Long id, @Valid @RequestBody CategoriaUpdateDTO dto) {
+        return ResponseEntity.ok(categoriaService.editarCategoria(id, dto));
     }
 
-    @DeleteMapping("/delete/categoria/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
-    public ResponseEntity<Void> eliminarCategoria(@PathVariable Long id) {
-        categoriaService.eliminarCategoria(id);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    @DeleteMapping("/desactivar/categoria/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> desactivarCategoria(@PathVariable Long id) {
+        categoriaService.desactivarCategoria(id);
+        return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/post/png/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
-    public ResponseEntity<?> subirImagen(
-            @PathVariable Long id,
-            @RequestParam("file") MultipartFile file) {
-        categoriaService.guardarImagen(id, file);
-        return ResponseEntity.ok("Imagen subida");
-    }
-
-    @GetMapping("/categoria/png/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
-    public ResponseEntity<byte[]> obtenerImagen(@PathVariable Long id) {
-        byte[] imagen = categoriaService.obtenerImagen(id);
-        return ResponseEntity.ok()
-                .contentType(MediaType.IMAGE_PNG)
-                .body(imagen);
+    @PutMapping("/activar/categoria/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> activarCategoria(@PathVariable Long id) {
+        categoriaService.activarCategoria(id);
+        return ResponseEntity.noContent().build();
     }
 }

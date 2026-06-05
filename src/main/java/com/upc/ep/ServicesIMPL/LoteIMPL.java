@@ -1,22 +1,16 @@
 package com.upc.ep.ServicesIMPL;
 
 import com.upc.ep.DTO.*;
-import com.upc.ep.Entidades.Inventario;
-import com.upc.ep.Entidades.Lote;
-import com.upc.ep.Entidades.Prenda;
-import com.upc.ep.Entidades.Talla;
-import com.upc.ep.Repositorio.InventarioRepos;
-import com.upc.ep.Repositorio.LoteRepos;
-import com.upc.ep.Repositorio.PrendaRepos;
-import com.upc.ep.Repositorio.TallaRepos;
+import com.upc.ep.Entidades.*;
+import com.upc.ep.Repositorio.*;
 import com.upc.ep.Services.LoteService;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.*;
 
 @Service
 public class LoteIMPL implements LoteService {
@@ -32,178 +26,342 @@ public class LoteIMPL implements LoteService {
     @Autowired
     private TallaRepos tallaRepos;
 
+    @Autowired
+    private MovimientoRepos movimientoRepos;
+
     @Override
     @Transactional
-    public LoteDTO registrarLote(LoteDTO loteDTO) {
-        Prenda prenda = prendaRepos.findById(loteDTO.getPrenda().getIdPrenda())
-                .orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
-        if (loteDTO.getInventarios() == null || loteDTO.getInventarios().isEmpty()) {
-            throw new RuntimeException("El lote debe tener al menos un inventario");
+    public LoteResponseDTO registrarLote(LoteRegistroDTO dto) {
+        Prenda prenda = prendaRepos.findById(dto.getPrendaId()).orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
+        if (!prenda.getActivo()) {
+            throw new RuntimeException("No se puede registrar lotes a una prenda inactiva");
+        }
+        if (prenda.getEstado() == Prenda.EstadoPrenda.INHABILITADA) {
+            throw new RuntimeException("La prenda está inhabilitada");
+        }
+        int sumaInventarios = dto.getInventarios()
+                .stream()
+                .mapToInt(InventarioRegistroDTO::getStock)
+                .sum();
+        if (sumaInventarios
+                != dto.getCantidadInicial()) {
+            throw new RuntimeException("La suma de inventarios debe coincidir con la cantidad inicial");
+        }
+        Set<Long> tallas = new HashSet<>();
+        for (InventarioRegistroDTO inventarioDTO : dto.getInventarios()) {
+            if (!tallas.add(inventarioDTO.getTallaId())) {
+                throw new RuntimeException("No se permiten tallas repetidas en el mismo lote");
+            }
         }
         Lote lote = new Lote();
-        lote.setPrenda(prenda);
-        lote.setCantidad(loteDTO.getCantidad());
-        lote.setStockActual(loteDTO.getCantidad());
-        lote.setPrecioCompraTotal(loteDTO.getPrecioCompraTotal());
-        lote.setPrecioVenta(loteDTO.getPrecioVenta());
-        lote.setFechaIngreso(LocalDate.now());
+        lote.setCodigoLote(generarCodigoLote());
+        lote.setCantidadInicial(dto.getCantidadInicial());
+        lote.setStockActual(dto.getCantidadInicial());
+        lote.setPrecioCompraTotal(dto.getPrecioCompraTotal());
+        lote.setPrecioVenta(dto.getPrecioVenta());
         lote.setActivo(true);
-
-        Integer ultimoNumero = loteRepos.findMaxNumeroLoteByPrendaIdForUpdate(prenda.getIdPrenda());
-
-        int nuevoNumero = (ultimoNumero == null) ? 1 : ultimoNumero + 1;
-        lote.setNumeroLote(nuevoNumero);
-
-        Lote nuevoLote = loteRepos.save(lote);
-
-        int stockAsignado = 0;
-
-        for (InventarioDTO invDTO : loteDTO.getInventarios()) {
-
-            if (invDTO.getStock() == null || invDTO.getStock() <= 0) {
-                throw new RuntimeException("El stock del inventario debe ser mayor a 0");
-            }
-
-            Talla talla = tallaRepos.findById(invDTO.getTalla().getIdTalla())
-                    .orElseThrow(() -> new RuntimeException("Talla no encontrada"));
-
-            if (stockAsignado + invDTO.getStock() > loteDTO.getCantidad()) {
-                throw new RuntimeException("El stock total de inventarios no puede superar la cantidad del lote");
-            }
-
-            Inventario inv = new Inventario();
-            inv.setLote(nuevoLote);
-            inv.setTalla(talla);
-            inv.setStock(invDTO.getStock());
-            inventarioRepos.save(inv);
-            stockAsignado += invDTO.getStock();
+        lote.setPrenda(prenda);
+        Lote loteGuardado = loteRepos.save(lote);
+        for (InventarioRegistroDTO inventarioDTO : dto.getInventarios()) {
+            Talla talla = tallaRepos.findByIdTallaAndActivoTrue(inventarioDTO.getTallaId()).orElseThrow(() -> new RuntimeException("Talla no encontrada o inactiva"));
+            Inventario inventario = new Inventario();
+            inventario.setStock(inventarioDTO.getStock());
+            inventario.setLote(loteGuardado);
+            inventario.setTalla(talla);
+            inventarioRepos.save(inventario);
         }
-        if (stockAsignado != loteDTO.getCantidad()) {
-            throw new RuntimeException("El stock total de inventarios debe ser igual a la cantidad del lote");
+        if (prenda.getEstado() == Prenda.EstadoPrenda.SIN_LOTES || prenda.getEstado() == Prenda.EstadoPrenda.AGOTADO) {
+            prenda.setEstadoAnterior(prenda.getEstado());
+            prenda.setEstado(Prenda.EstadoPrenda.DISPONIBLE);
+            prendaRepos.save(prenda);
+            Movimiento movimientoEstado = new Movimiento();
+            movimientoEstado.setTipoMovimiento(Movimiento.TipoMovimiento.CAMBIO_ESTADO_PRENDA);
+            movimientoEstado.setMotivo("La prenda pasó a DISPONIBLE por nuevo lote");
+            movimientoEstado.setReferenciaId(prenda.getCodigo());
+            movimientoRepos.save(movimientoEstado);
         }
-        prenda.setEstado("DISPONIBLE");
-        prendaRepos.save(prenda);
-        LoteDTO resultado = new LoteDTO();
-        resultado.setIdLote(nuevoLote.getIdLote());
-        resultado.setNumeroLote(nuevoLote.getNumeroLote());
-        resultado.setCantidad(nuevoLote.getCantidad());
-        resultado.setStockActual(nuevoLote.getStockActual());
-        resultado.setPrecioCompraTotal(nuevoLote.getPrecioCompraTotal());
-        resultado.setPrecioVenta(nuevoLote.getPrecioVenta());
-        resultado.setFechaIngreso(nuevoLote.getFechaIngreso());
-        resultado.setActivo(nuevoLote.getActivo());
-        resultado.setPrenda(loteDTO.getPrenda());
-        resultado.setInventarios(loteDTO.getInventarios());
-
-        return resultado;
+        Movimiento movimiento = new Movimiento();
+        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_LOTE);
+        movimiento.setMotivo("Se registró el lote: " + loteGuardado.getCodigoLote());
+        movimiento.setReferenciaId(loteGuardado.getCodigoLote());
+        movimientoRepos.save(movimiento);
+        return mapToResponse(loteGuardado);
     }
 
-    @Override
-    public LoteMetricasDTO calcularMetricas(Long idLote) {
-        Lote lote = loteRepos.findById(idLote)
-                .orElseThrow(() -> new RuntimeException("Lote no encontrado"));
+    private String generarCodigoLote() {
+        String codigo;
+        do {
+            codigo = "LOT-" +
+                    UUID.randomUUID()
+                            .toString()
+                            .substring(0, 8)
+                            .toUpperCase();
 
-        int cantidad = lote.getCantidad();
-
-        double costoPorUnidad = lote.getPrecioCompraTotal() / (double) cantidad;
-
-        double ventaTotal = lote.getPrecioVenta() * cantidad;
-
-        double gananciaPorUnidad = lote.getPrecioVenta() - costoPorUnidad;
-
-        double gananciaTotal = gananciaPorUnidad * cantidad;
-
-        double margenGanancia = (gananciaPorUnidad / lote.getPrecioVenta()) * 100;
-
-        double radioInversion = ventaTotal / lote.getPrecioCompraTotal();
-
-        double puntoEquilibrio = lote.getPrecioCompraTotal() / gananciaPorUnidad;
-
-        LoteMetricasDTO dto = new LoteMetricasDTO();
-        dto.setIdLote(idLote);
-        dto.setVentaTotal(ventaTotal);
-        dto.setGananciaPorUnidad(gananciaPorUnidad);
-        dto.setGananciaTotal(gananciaTotal);
-        dto.setMargenGanancia(margenGanancia);
-        dto.setRadioInversion(radioInversion);
-        dto.setPuntoEquilibrio(puntoEquilibrio);
-
-        return dto;
-    }
-
-    @Override
-    public LotesTotalesDTO obtenerStockDisponible() {
-        Long totalStock = loteRepos.totalStockDisponible().longValue();
-        LocalDate inicioMesActual = LocalDate.now().withDayOfMonth(1);
-        LocalDate inicioMesAnterior = inicioMesActual.minusMonths(1);
-        Long stockUltimoMes = loteRepos
-                .stockUltimoMes(inicioMesActual)
-                .longValue();
-        Long stockMesAnterior = loteRepos
-                .stockMesAnterior(inicioMesAnterior, inicioMesActual)
-                .longValue();
-        double crecimiento = 0;
-        if (stockMesAnterior > 0) {
-            crecimiento = ((double)(stockUltimoMes - stockMesAnterior) / stockMesAnterior) * 100;
-        }
-        return new LotesTotalesDTO(
-                totalStock,
-                stockUltimoMes,
-                crecimiento
+        } while (
+                loteRepos.existsByCodigoLote(codigo)
         );
+        return codigo;
+    }
+
+    private LoteResponseDTO mapToResponse(Lote lote) {
+        return LoteResponseDTO.builder()
+                .idLote(lote.getIdLote())
+                .codigoLote(lote.getCodigoLote())
+                .cantidadInicial(lote.getCantidadInicial())
+                .stockActual(lote.getStockActual())
+                .precioCompraTotal(lote.getPrecioCompraTotal())
+                .precioVenta(lote.getPrecioVenta())
+                .fechaIngreso(lote.getFechaIngreso())
+                .activo(lote.getActivo())
+                .prendaCodigo(lote.getPrenda().getCodigo())
+                .build();
     }
 
     @Override
-    public Long obtenerLotesActivos() {
-        return loteRepos.totalLotesActivos();
+    public MetricaLoteDTO obtenerMetricasLote(Long idLote) {
+        Lote lote = loteRepos.findById(idLote)
+                .orElseThrow(() ->
+                        new RuntimeException("Lote no encontrado")
+                );
+        return calcularMetricasLote(lote);
+    }
+
+    private MetricaLoteDTO calcularMetricasLote(Lote lote) {
+        BigDecimal ventaTotal = lote.getPrecioVenta().multiply(BigDecimal.valueOf(lote.getCantidadInicial()));
+        BigDecimal costoUnitario = lote.getPrecioCompraTotal().divide(BigDecimal.valueOf(lote.getCantidadInicial()), 2, RoundingMode.HALF_UP);
+        BigDecimal gananciaPorUnidad = lote.getPrecioVenta().subtract(costoUnitario);
+        BigDecimal gananciaTotal = gananciaPorUnidad.multiply(BigDecimal.valueOf(lote.getCantidadInicial()));
+        BigDecimal margenGanancia = gananciaTotal.divide(lote.getPrecioCompraTotal(), 2, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+        BigDecimal radioInversion = ventaTotal.divide(lote.getPrecioCompraTotal(), 2, RoundingMode.HALF_UP);
+        Integer puntoEquilibrio = gananciaPorUnidad.compareTo(BigDecimal.ZERO) > 0 ? lote.getPrecioCompraTotal().divide(gananciaPorUnidad, 0, RoundingMode.UP).intValue() : 0;
+        return MetricaLoteDTO.builder()
+                .ventaTotal(ventaTotal)
+                .gananciaPorUnidad(gananciaPorUnidad)
+                .gananciaTotal(gananciaTotal)
+                .margenGanancia(margenGanancia)
+                .radioInversion(radioInversion)
+                .puntoEquilibrio(puntoEquilibrio)
+                .build();
     }
 
     @Override
-    public List<LoteMensualDTO> obtenerLotesPorMes() {
-        return loteRepos.obtenerLotesPorMes();
+    public LoteSeleccionadoDTO obtenerInventariosDisponibles(Long idPrenda) {
+        Lote loteFIFO = obtenerLoteFIFOActivo(idPrenda);
+        List<InventarioHistorialDTO> inventarios =
+                loteFIFO.getInventarios().stream().filter(inv -> inv.getStock() > 0).map(inv -> InventarioHistorialDTO.builder().idInventario(inv.getIdInventario())
+                        .talla(inv.getTalla().getNombre())
+                        .stock(inv.getStock()).build()).toList();
+        return LoteSeleccionadoDTO.builder()
+                .idLote(loteFIFO.getIdLote())
+                .codigoLote(loteFIFO.getCodigoLote())
+                .precioVenta(loteFIFO.getPrecioVenta())
+                .inventarios(inventarios)
+                .build();
     }
 
     @Override
-    public List<LoteDetalleDTO> obtenerHistorialPrenda(Long idPrenda) {
+    @Transactional
+    public void actualizarStockLote(Long idLote) {
+        Lote lote = loteRepos.findById(idLote).orElseThrow(() -> new RuntimeException("Lote no encontrado"));
+        Boolean estabaActivo = lote.getActivo();
+        Integer stockActual =
+                lote.getInventarios()
+                        .stream()
+                        .mapToInt(Inventario::getStock)
+                        .sum();
+        lote.setStockActual(stockActual);
+        if (stockActual == 0) {
+            lote.setActivo(false);
+            if (Boolean.TRUE.equals(estabaActivo)) {
+                Movimiento movimiento = new Movimiento();
+                movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.LOTE_AGOTADO);
+                movimiento.setMotivo("El lote quedó agotado: " + lote.getCodigoLote());
+                movimiento.setReferenciaId(lote.getCodigoLote());
+                movimientoRepos.save(movimiento);
+                Optional<Lote> nuevoFIFO = loteRepos.findFirstByPrendaIdPrendaAndActivoTrueAndStockActualGreaterThanOrderByFechaIngresoAsc(
+                        lote.getPrenda().getIdPrenda(), 0);
+                if (nuevoFIFO.isPresent()) {Movimiento movimientoFIFO = new Movimiento();
+                    movimientoFIFO.setTipoMovimiento(Movimiento.TipoMovimiento.CAMBIO_FIFO);
+                    movimientoFIFO.setMotivo("El nuevo lote FIFO activo es: " + nuevoFIFO.get().getCodigoLote());
+                    movimientoFIFO.setReferenciaId(lote.getPrenda().getCodigo());
+                    movimientoRepos.save(movimientoFIFO);
+                }
+            }
 
-        List<Lote> lotes = loteRepos.obtenerHistorialPorPrenda(idPrenda);
-
-        return lotes.stream().map(lote -> {
-
-            LoteDetalleDTO dto = new LoteDetalleDTO();
-
-            dto.setIdLote(lote.getIdLote());
-            dto.setNumeroLote(lote.getNumeroLote());
-            dto.setCantidad(lote.getCantidad());
-            dto.setStockActual(lote.getStockActual());
-            dto.setPrecioCompraTotal(lote.getPrecioCompraTotal());
-            dto.setPrecioVenta(lote.getPrecioVenta());
-            dto.setFechaIngreso(lote.getFechaIngreso());
-            dto.setActivo(lote.getActivo());
-
-            List<HistorialDTO> historiales = lote.getInventarios()
-                    .stream()
-                    .sorted((a, b) -> b.getIdInventario().compareTo(a.getIdInventario()))
-                    .map(inv -> {
-                        HistorialDTO histDTO = new HistorialDTO();
-
-                        histDTO.setIdInventario(inv.getIdInventario());
-                        histDTO.setStock(inv.getStock());
-
-                        Talla talla = inv.getTalla();
-                        TallaDTO tallaDTO = new TallaDTO();
-                        tallaDTO.setIdTalla(talla.getIdTalla());
-                        tallaDTO.setNombre(talla.getNombre());
-
-                        histDTO.setTalla(tallaDTO);
-
-                        return histDTO;
-                    }).toList();
-
-            dto.setHistoriales(historiales);
-
-            return dto;
-
-        }).toList();
+        } else {
+            lote.setActivo(true);
+            if (!Boolean.TRUE.equals(estabaActivo)) {
+                Movimiento movimiento = new Movimiento();
+                movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_LOTE);
+                movimiento.setMotivo("El lote volvió a estar disponible: " + lote.getCodigoLote());
+                movimiento.setReferenciaId(lote.getCodigoLote());
+                movimientoRepos.save(movimiento);
+                Movimiento movimientoFIFO = new Movimiento();
+                movimientoFIFO.setTipoMovimiento(Movimiento.TipoMovimiento.CAMBIO_FIFO);
+                movimientoFIFO.setMotivo("El nuevo lote FIFO activo es: " + lote.getCodigoLote());
+                movimientoFIFO.setReferenciaId(lote.getPrenda().getCodigo());
+                movimientoRepos.save(movimientoFIFO);
+            }
+        }
+        loteRepos.save(lote);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LoteHistorialResponseDTO> listarHistorialLotes(Long idPrenda) {
+        Prenda prenda = prendaRepos.findById(idPrenda).orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
+        List<Lote> lotes = loteRepos.listarHistorialLotes(prenda.getIdPrenda());
+        return lotes.stream()
+                .map(this::toHistorialDTO)
+                .toList();
+    }
+
+    private LoteHistorialResponseDTO toHistorialDTO(Lote lote) {
+        List<InventarioHistorialDTO> inventarios = lote.getInventarios()
+                .stream()
+                .map(inventario -> InventarioHistorialDTO.builder()
+                        .idInventario(inventario.getIdInventario())
+                        .talla(inventario.getTalla().getNombre())
+                        .stock(inventario.getStock())
+                        .build())
+                .toList();
+        return LoteHistorialResponseDTO.builder()
+                .idLote(lote.getIdLote())
+                .codigoLote(lote.getCodigoLote())
+                .cantidadInicial(lote.getCantidadInicial())
+                .stockActual(lote.getStockActual())
+                .precioCompraTotal(lote.getPrecioCompraTotal())
+                .precioVenta(lote.getPrecioVenta())
+                .activo(lote.getActivo())
+                .fechaIngreso(lote.getFechaIngreso())
+                .inventarios(inventarios)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Lote obtenerLoteFIFOActivo(Long idPrenda) {
+        Prenda prenda = prendaRepos.findById(idPrenda)
+                .orElseThrow(() ->
+                        new RuntimeException("Prenda no encontrada"));
+        if (!prenda.getActivo()) {
+            throw new RuntimeException("La prenda está inactiva");
+        }
+        if (prenda.getEstado() != Prenda.EstadoPrenda.DISPONIBLE) {
+            throw new RuntimeException("La prenda no tiene stock disponible");
+        }
+        return loteRepos
+                .findFirstByPrendaIdPrendaAndActivoTrueAndStockActualGreaterThanOrderByFechaIngresoAsc(idPrenda, 0)
+                .orElseThrow(() -> new RuntimeException("No existe lote FIFO disponible"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UltimoLoteResponseDTO obtenerUltimoLotePrenda(Long idPrenda) {
+        Prenda prenda = prendaRepos.findById(idPrenda)
+                .orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
+        Lote lote = loteRepos
+                .obtenerUltimoLotePrenda(prenda.getIdPrenda())
+                .orElseThrow(() -> new RuntimeException("La prenda no tiene lotes registrados"));
+        List<InventarioHistorialDTO> inventarios =
+                lote.getInventarios()
+                        .stream()
+                        .map(inv -> InventarioHistorialDTO
+                                .builder()
+                                .idInventario(inv.getIdInventario())
+                                .talla(inv.getTalla().getNombre())
+                                .stock(inv.getStock())
+                                .build()).toList();
+        return UltimoLoteResponseDTO
+                .builder()
+                .idLote(lote.getIdLote())
+                .codigoLote(lote.getCodigoLote())
+                .cantidadInicial(lote.getCantidadInicial())
+                .stockActual(lote.getStockActual())
+                .precioCompraTotal(lote.getPrecioCompraTotal())
+                .precioVenta(lote.getPrecioVenta())
+                .activo(lote.getActivo())
+                .fechaIngreso(lote.getFechaIngreso())
+                .inventarios(inventarios)
+                .build();
+    }
+
+
+
+//
+//    @Override
+//    public LotesTotalesDTO obtenerStockDisponible() {
+//        Long totalStock = loteRepos.totalStockDisponible().longValue();
+//        LocalDate inicioMesActual = LocalDate.now().withDayOfMonth(1);
+//        LocalDate inicioMesAnterior = inicioMesActual.minusMonths(1);
+//        Long stockUltimoMes = loteRepos
+//                .stockUltimoMes(inicioMesActual)
+//                .longValue();
+//        Long stockMesAnterior = loteRepos
+//                .stockMesAnterior(inicioMesAnterior, inicioMesActual)
+//                .longValue();
+//        double crecimiento = 0;
+//        if (stockMesAnterior > 0) {
+//            crecimiento = ((double)(stockUltimoMes - stockMesAnterior) / stockMesAnterior) * 100;
+//        }
+//        return new LotesTotalesDTO(
+//                totalStock,
+//                stockUltimoMes,
+//                crecimiento
+//        );
+//    }
+//
+//    @Override
+//    public Long obtenerLotesActivos() {
+//        return loteRepos.totalLotesActivos();
+//    }
+//
+//    @Override
+//    public List<LoteMensualDTO> obtenerLotesPorMes() {
+//        return loteRepos.obtenerLotesPorMes();
+//    }
+//
+//    @Override
+//    public List<LoteDetalleDTO> obtenerHistorialPrenda(Long idPrenda) {
+//
+//        List<Lote> lotes = loteRepos.obtenerHistorialPorPrenda(idPrenda);
+//
+//        return lotes.stream().map(lote -> {
+//
+//            LoteDetalleDTO dto = new LoteDetalleDTO();
+//
+//            dto.setIdLote(lote.getIdLote());
+//            dto.setNumeroLote(lote.getNumeroLote());
+//            dto.setCantidad(lote.getCantidad());
+//            dto.setStockActual(lote.getStockActual());
+//            dto.setPrecioCompraTotal(lote.getPrecioCompraTotal());
+//            dto.setPrecioVenta(lote.getPrecioVenta());
+//            dto.setFechaIngreso(lote.getFechaIngreso());
+//            dto.setActivo(lote.getActivo());
+//
+//            List<HistorialDTO> historiales = lote.getInventarios()
+//                    .stream()
+//                    .sorted((a, b) -> b.getIdInventario().compareTo(a.getIdInventario()))
+//                    .map(inv -> {
+//                        HistorialDTO histDTO = new HistorialDTO();
+//
+//                        histDTO.setIdInventario(inv.getIdInventario());
+//                        histDTO.setStock(inv.getStock());
+//
+//                        Talla talla = inv.getTalla();
+//                        TallaDTO tallaDTO = new TallaDTO();
+//                        tallaDTO.setIdTalla(talla.getIdTalla());
+//                        tallaDTO.setNombre(talla.getNombre());
+//
+//                        histDTO.setTalla(tallaDTO);
+//
+//                        return histDTO;
+//                    }).toList();
+//
+//            dto.setHistoriales(historiales);
+//
+//            return dto;
+//
+//        }).toList();
+//    }
 }

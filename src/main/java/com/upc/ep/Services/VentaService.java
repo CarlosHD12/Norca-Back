@@ -9,30 +9,34 @@ import java.util.List;
 import java.util.Map;
 
 public interface VentaService {
-    VentaDTO registrarVenta(VentaDTO ventaDTO);
-    List<VentaDTO> listarVentas();
-    VentaDTO editarVenta(Long id, VentaDTO ventaDTO);
-    void eliminarVenta(Long id);
-    VentaDetalleDTO obtenerDetalleVenta(Long idVenta);
-    void desactivarVenta(Long idVenta);
-    VentasTotalesDTO obtenerKpiVentas();
-    VentasTotalesDTO obtenerKpiUnidades();
-    VentasTotalesDTO obtenerIngresosTotales();
-    MetodoPagoDTO obtenerMetodoPagoFavorito();
-    List<IngresosCategoriaDTO> obtenerIngresosPorCategoria();
-    List<Map<String, Object>> reportePorMes(String tipo);
-    Page<VentaListadoDTO> listarVentas(
-            String codigo,
-            String metodoPago,
-            String periodo,
-            LocalDateTime fechaInicio,
-            LocalDateTime fechaFin,
-            Double precioMin,
-            Double precioMax,
-            Integer unidadesMin,
-            Integer unidadesMax,
-            Pageable pageable
-    );
+    VentaResponseDTO registrarVenta(VentaRegistroDTO dto);
+    void anularVenta(Long idVenta);
+    Page<VentaListResponseDTO> listarVentas(Pageable pageable);
 
-    ImpactoVentaDTO obtenerImpactoVenta(Long idVenta);
+//    VentaDTO registrarVenta(VentaDTO ventaDTO);
+//    List<VentaDTO> listarVentas();
+//    VentaDTO editarVenta(Long id, VentaDTO ventaDTO);
+//    void eliminarVenta(Long id);
+//    VentaDetalleDTO obtenerDetalleVenta(Long idVenta);
+//    void desactivarVenta(Long idVenta);
+//    VentasTotalesDTO obtenerKpiVentas();
+//    VentasTotalesDTO obtenerKpiUnidades();
+//    VentasTotalesDTO obtenerIngresosTotales();
+//    MetodoPagoDTO obtenerMetodoPagoFavorito();
+//    List<IngresosCategoriaDTO> obtenerIngresosPorCategoria();
+//    List<Map<String, Object>> reportePorMes(String tipo);
+//    Page<VentaListadoDTO> listarVentas(
+//            String codigo,
+//            String metodoPago,
+//            String periodo,
+//            LocalDateTime fechaInicio,
+//            LocalDateTime fechaFin,
+//            Double precioMin,
+//            Double precioMax,
+//            Integer unidadesMin,
+//            Integer unidadesMax,
+//            Pageable pageable
+//    );
+//
+//    ImpactoVentaDTO obtenerImpactoVenta(Long idVenta);
 }

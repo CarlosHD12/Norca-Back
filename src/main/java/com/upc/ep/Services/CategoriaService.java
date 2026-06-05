@@ -1,17 +1,16 @@
 package com.upc.ep.Services;
 
-import com.upc.ep.DTO.CategoriaDTO;
+import com.upc.ep.DTO.CategoriaRegistroDTO;
+import com.upc.ep.DTO.CategoriaResponseDTO;
+import com.upc.ep.DTO.CategoriaUpdateDTO;
 import com.upc.ep.Entidades.Categoria;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 public interface CategoriaService {
-    CategoriaDTO registrarCategoria(CategoriaDTO categoriaDTO);
-    List<CategoriaDTO> listarCategorias();
-    CategoriaDTO actualizarCategoria(Long id, CategoriaDTO categoriaDTO);
-    void eliminarCategoria(Long id);
-    Categoria buscarPorId(Long id);
-    void guardarImagen(Long id, MultipartFile file);
-    byte[] obtenerImagen(Long id);
+    CategoriaResponseDTO registrarCategoria(CategoriaRegistroDTO dto);
+    List<CategoriaResponseDTO> listarCategorias();
+    CategoriaResponseDTO editarCategoria(Long idCategoria, CategoriaUpdateDTO dto);
+    void desactivarCategoria(Long idCategoria);
+    void activarCategoria(Long idCategoria);
 }

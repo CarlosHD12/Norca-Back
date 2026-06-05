@@ -12,25 +12,25 @@ import java.util.Optional;
 
 @Repository
 public interface MetricaRepos extends JpaRepository<Metrica, Long> {
-    Optional<Metrica> findByPrenda(Prenda prenda);
-
-    Optional<Metrica> findByPrenda_IdPrenda(Long idPrenda);
-
-    @Query("""
-   SELECT SUM(dv.cantidad), SUM(dv.subtotal)
-   FROM Detalle_Vent dv
-   WHERE dv.inventario.lote.prenda.idPrenda = :idPrenda
-   AND dv.venta.idVenta = :idVenta
-""")
-    Object sumVentasByPrendaYVenta(Long idPrenda, Long idVenta);
-
-    @Query("SELECT SUM(l.precioCompraTotal) FROM Lote l WHERE l.prenda.idPrenda = :idPrenda")
-    Double sumPrecioCompraTotalByPrenda(Long idPrenda);
-
-    @Query("SELECT dv.venta.fechaHora FROM Detalle_Vent dv " +
-            "WHERE dv.inventario.lote.prenda.idPrenda = :idPrenda " +
-            "ORDER BY dv.venta.fechaHora ASC")
-    List<LocalDateTime> findAllFechasByPrenda(Long idPrenda);
-
-    boolean existsByPrenda_IdPrenda(Long idPrenda);
+//    Optional<Metrica> findByPrenda(Prenda prenda);
+//
+//    Optional<Metrica> findByPrenda_IdPrenda(Long idPrenda);
+//
+//    @Query("""
+//   SELECT SUM(dv.cantidad), SUM(dv.subtotal)
+//   FROM DetalleVenta dv
+//   WHERE dv.inventario.lote.prenda.idPrenda = :idPrenda
+//   AND dv.venta.idVenta = :idVenta
+//""")
+//    Object sumVentasByPrendaYVenta(Long idPrenda, Long idVenta);
+//
+//    @Query("SELECT SUM(l.precioCompraTotal) FROM Lote l WHERE l.prenda.idPrenda = :idPrenda")
+//    Double sumPrecioCompraTotalByPrenda(Long idPrenda);
+//
+//    @Query("SELECT dv.venta.fechaHora FROM DetalleVenta dv " +
+//            "WHERE dv.inventario.lote.prenda.idPrenda = :idPrenda " +
+//            "ORDER BY dv.venta.fechaHora ASC")
+//    List<LocalDateTime> findAllFechasByPrenda(Long idPrenda);
+//
+//    boolean existsByPrenda_IdPrenda(Long idPrenda);
 }
