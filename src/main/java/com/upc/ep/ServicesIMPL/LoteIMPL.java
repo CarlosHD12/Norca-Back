@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -208,12 +210,19 @@ public class LoteIMPL implements LoteService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<LoteHistorialResponseDTO> listarHistorialLotes(Long idPrenda) {
-        Prenda prenda = prendaRepos.findById(idPrenda).orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
-        List<Lote> lotes = loteRepos.listarHistorialLotes(prenda.getIdPrenda());
-        return lotes.stream()
+    public HistorialPrendaResponseDTO listarHistorialLotes(Long idPrenda) {
+        Prenda prenda = prendaRepos.findById(idPrenda)
+                .orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
+        List<LoteHistorialResponseDTO> lotes = loteRepos
+                .listarHistorialLotes(idPrenda)
+                .stream()
                 .map(this::toHistorialDTO)
                 .toList();
+        return HistorialPrendaResponseDTO.builder()
+                .idPrenda(prenda.getIdPrenda())
+                .codigoPrenda(prenda.getCodigo())
+                .lotes(lotes)
+                .build();
     }
 
     private LoteHistorialResponseDTO toHistorialDTO(Lote lote) {
@@ -286,7 +295,40 @@ public class LoteIMPL implements LoteService {
                 .build();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public ResumenLoteDTO obtenerResumenLote(Long idLote) {
+        Lote lote = loteRepos.findById(idLote).orElseThrow(() ->
+                new RuntimeException("Lote no encontrado"));
 
+        BigDecimal costoUnitario = lote.getPrecioCompraTotal()
+                .divide(BigDecimal.valueOf(lote.getCantidadInicial()), 2, RoundingMode.HALF_UP);
+        int vendidos = lote.getCantidadInicial() - lote.getStockActual();
+        double porcentajeVendido = lote.getCantidadInicial() > 0 ? (double) vendidos * 100 / lote.getCantidadInicial() : 0;
+        String estadoComercial;
+        if (porcentajeVendido >= 75) {
+            estadoComercial = "Excelente";
+        } else if (porcentajeVendido >= 50) {
+            estadoComercial = "Bueno";
+        } else if (porcentajeVendido >= 25) {
+            estadoComercial = "Regular";
+        } else {
+            estadoComercial = "Lento";
+        }
+        BigDecimal valorInventario = costoUnitario.multiply(BigDecimal.valueOf(lote.getStockActual()));
+        BigDecimal gananciaPotencial =
+                lote.getPrecioVenta().subtract(costoUnitario).multiply(
+                        BigDecimal.valueOf(lote.getStockActual()));
+        int antiguedadDias = (int) ChronoUnit.DAYS.between(
+                lote.getFechaIngreso().toLocalDate(),
+                LocalDate.now());
+        return ResumenLoteDTO.builder()
+                .antiguedadDias(antiguedadDias)
+                .estadoComercial(estadoComercial)
+                .valorInventario(valorInventario)
+                .gananciaPotencial(gananciaPotencial)
+                .build();
+    }
 
 //
 //    @Override

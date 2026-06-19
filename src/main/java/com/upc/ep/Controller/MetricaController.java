@@ -1,7 +1,10 @@
 package com.upc.ep.Controller;
 
+import com.upc.ep.DTO.MetricaVentaDTO;
 import com.upc.ep.Services.MetricaService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -10,11 +13,11 @@ public class MetricaController {
     @Autowired
     private MetricaService metricaService;
 
-//    @GetMapping("/metrica/prenda/{idPrenda}")
-//    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
-//    public ResponseEntity<MetricaDTO> getMetrica(@PathVariable Long idPrenda) {
-//        return ResponseEntity.ok(metricaService.obtenerMetricaPorPrenda(idPrenda));
-//    }
+      @GetMapping("/metrica/prenda/{idPrenda}")
+        @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
+      public ResponseEntity<MetricaVentaDTO> obtenerMetricaPorPrenda(@PathVariable Long idPrenda) {
+          return ResponseEntity.ok(metricaService.obtenerMetricaPorPrenda(idPrenda));
+      }
 //
 //    @GetMapping("/prenda/{idPrenda}/exists")
 //    @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")

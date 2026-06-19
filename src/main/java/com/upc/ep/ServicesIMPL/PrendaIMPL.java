@@ -158,28 +158,18 @@ public class PrendaIMPL implements PrendaService {
 
     @Override
     public PrendaDetalleDTO obtenerDetallePrenda(Long idPrenda) {
+
         Prenda prenda = prendaRepos
                 .findDetalleByIdPrenda(idPrenda)
-                .orElseThrow(() ->
-                        new RuntimeException("Prenda no encontrada"));
-        Lote ultimoLote = prenda.getLotes()
+                .orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
+
+        Optional<Lote> loteFIFO = prenda.getLotes()
                 .stream()
                 .filter(Lote::getActivo)
-                .max(Comparator.comparing(Lote::getFechaIngreso))
-                .orElseThrow(() -> new RuntimeException("La prenda no tiene lotes activos"));
-        List<InventarioHistorialDTO> inventarios =
-                ultimoLote.getInventarios()
-                        .stream()
-                        .map(inv ->
-                                InventarioHistorialDTO.builder()
-                                        .talla(inv.getTalla().getNombre())
-                                        .stock(inv.getStock())
-                                        .build()).toList();
-        MetricaLoteDTO metricas =
-                loteService.obtenerMetricasLote(
-                        ultimoLote.getIdLote()
-                );
-        return PrendaDetalleDTO.builder()
+                .filter(l -> l.getStockActual() > 0)
+                .min(Comparator.comparing(Lote::getFechaIngreso));
+
+        PrendaDetalleDTO.PrendaDetalleDTOBuilder dto = PrendaDetalleDTO.builder()
                 .idPrenda(prenda.getIdPrenda())
                 .codigo(prenda.getCodigo())
                 .nombre(prenda.getNombre())
@@ -191,14 +181,37 @@ public class PrendaIMPL implements PrendaService {
                 .material(prenda.getMaterial())
                 .descripcion(prenda.getDescripcion())
                 .colores(prenda.getColores())
-                .idLote(ultimoLote.getIdLote())
-                .cantidadInicial(ultimoLote.getCantidadInicial())
-                .stockActual(ultimoLote.getStockActual())
-                .precioVenta(ultimoLote.getPrecioVenta())
-                .fechaIngreso(ultimoLote.getFechaIngreso())
-                .inventarios(inventarios)
-                .metricas(metricas)
-                .build();
+                .inventarios(List.of());
+
+        if (loteFIFO.isPresent()) {
+
+            Lote lote = loteFIFO.get();
+
+            List<InventarioHistorialDTO> inventarios =
+                    lote.getInventarios()
+                            .stream()
+                            .map(inv -> InventarioHistorialDTO.builder()
+                                    .idInventario(inv.getIdInventario())
+                                    .talla(inv.getTalla().getNombre())
+                                    .stock(inv.getStock())
+                                    .build())
+                            .toList();
+
+            ResumenLoteDTO resumen =
+                    loteService.obtenerResumenLote(lote.getIdLote());
+
+            dto.idLote(lote.getIdLote())
+                    .codigoLote(lote.getCodigoLote())
+                    .cantidadInicial(lote.getCantidadInicial())
+                    .stockActual(lote.getStockActual())
+                    .precioVenta(lote.getPrecioVenta())
+                    .precioCompra(lote.getPrecioCompraTotal())
+                    .fechaIngreso(lote.getFechaIngreso())
+                    .inventarios(inventarios)
+                    .resumen(resumen);
+        }
+
+        return dto.build();
     }
 
     @Override
@@ -274,10 +287,6 @@ public class PrendaIMPL implements PrendaService {
                 .filter(Lote::getActivo)
                 .filter(l -> l.getStockActual() > 0)
                 .min(Comparator.comparing(Lote::getFechaIngreso));
-        List<String> colores = prenda.getColores()
-                .stream()
-                .limit(3)
-                .toList();
         Integer stockTotal = prenda.getLotes()
                 .stream()
                 .filter(Lote::getActivo)
@@ -285,17 +294,20 @@ public class PrendaIMPL implements PrendaService {
                 .sum();
         return PrendaListResponseDTO.builder()
                 .idPrenda(prenda.getIdPrenda())
+                .categoriaId(prenda.getCategoria().getIdCategoria())
+                .marcaId(prenda.getMarca().getIdMarca())
                 .codigo(prenda.getCodigo())
                 .imagenUrl(prenda.getImagenUrl())
                 .nombre(prenda.getNombre())
                 .categoria(prenda.getCategoria().getNombre())
                 .marca(prenda.getMarca().getNombre())
                 .material(prenda.getMaterial())
-                .colores(colores)
                 .precioVenta(loteFIFO.map(Lote::getPrecioVenta).orElse(BigDecimal.ZERO))
                 .stock(stockTotal)
                 .estado(prenda.getEstado().name())
-                .build();
+                .descripcion(prenda.getDescripcion())
+                .fechaRegistro(prenda.getFechaRegistro())
+                .colores(prenda.getColores() != null ? new ArrayList<>(prenda.getColores()) : new ArrayList<>()).build();
     }
 
     @Override

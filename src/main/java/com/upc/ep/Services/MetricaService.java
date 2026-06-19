@@ -1,6 +1,7 @@
 package com.upc.ep.Services;
 
+import com.upc.ep.DTO.MetricaVentaDTO;
+
 public interface MetricaService {
-//    MetricaDTO obtenerMetricaPorPrenda(Long idPrenda);
-//    boolean existeMetricaPorPrenda(Long idPrenda);
+    MetricaVentaDTO obtenerMetricaPorPrenda(Long idPrenda);
 }

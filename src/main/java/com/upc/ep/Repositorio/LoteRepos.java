@@ -21,14 +21,14 @@ public interface LoteRepos extends JpaRepository<Lote, Long> {
     boolean existsByCodigoLote(String codigoLote);
     Optional<Lote> findFirstByPrendaIdPrendaAndActivoTrueAndStockActualGreaterThanOrderByFechaIngresoAsc(Long idPrenda, Integer stock);
     @Query("""
-        SELECT DISTINCT l
-        FROM Lote l
-        LEFT JOIN FETCH l.inventarios i
-        LEFT JOIN FETCH i.talla
-        WHERE l.prenda.idPrenda = :idPrenda
-        ORDER BY l.fechaIngreso DESC
+    SELECT DISTINCT l
+    FROM Lote l
+    LEFT JOIN FETCH l.inventarios i
+    LEFT JOIN FETCH i.talla
+    WHERE l.prenda.idPrenda = :idPrenda
+    ORDER BY l.fechaIngreso DESC
     """)
-    List<Lote> listarHistorialLotes(Long idPrenda);
+    List<Lote> listarHistorialLotes(@Param("idPrenda") Long idPrenda);
     @Query("""
     SELECT DISTINCT l
     FROM Lote l

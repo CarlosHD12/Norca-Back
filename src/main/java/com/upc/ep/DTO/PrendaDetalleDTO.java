@@ -24,16 +24,18 @@ public class PrendaDetalleDTO {
     private String descripcion;
     private List<String> colores;
 
-    // ÚLTIMO LOTE ACTIVO
+    // ÚLTIMO LOTE REGISTRADO
     private Long idLote;
+    private String codigoLote;
     private Integer cantidadInicial;
     private Integer stockActual;
     private BigDecimal precioVenta;
+    private BigDecimal precioCompra;
     private LocalDateTime fechaIngreso;
 
     // INVENTARIOS
     private List<InventarioHistorialDTO> inventarios;
 
-    // MÉTRICAS DEL LOTE
-    private MetricaLoteDTO metricas;
+    // RESUMEN DEL LOTE
+    private ResumenLoteDTO resumen;
 }

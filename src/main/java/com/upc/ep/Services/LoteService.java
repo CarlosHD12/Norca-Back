@@ -10,9 +10,10 @@ public interface LoteService {
     MetricaLoteDTO obtenerMetricasLote(Long idLote);
     LoteSeleccionadoDTO obtenerInventariosDisponibles(Long idPrenda);
     void actualizarStockLote(Long idLote);
-    List<LoteHistorialResponseDTO> listarHistorialLotes(Long idPrenda);
+    HistorialPrendaResponseDTO listarHistorialLotes(Long idPrenda);
     Lote obtenerLoteFIFOActivo(Long idPrenda);
     UltimoLoteResponseDTO obtenerUltimoLotePrenda(Long idPrenda);
+    ResumenLoteDTO obtenerResumenLote(Long idLote);
 
 //    LoteMetricasDTO calcularMetricas(Long idLote);
 //    Long obtenerLotesActivos();

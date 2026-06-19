@@ -43,7 +43,7 @@ public class LoteController {
 
     @GetMapping("/historial/lote/{idPrenda}")
     @PreAuthorize("hasAnyRole('ADMIN', 'AYUDANTE')")
-    public ResponseEntity<List<LoteHistorialResponseDTO>> listarHistorialLotes(@PathVariable Long idPrenda) {
+    public ResponseEntity<HistorialPrendaResponseDTO> listarHistorialLotes(@PathVariable Long idPrenda) {
         return ResponseEntity.ok(loteService.listarHistorialLotes(idPrenda));
     }
 
