@@ -1,4 +1,5 @@
 package com.upc.ep.security.dtos;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -6,12 +7,11 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
-public class AuthResponseDTO {
-    private String token;
-    private String type;
-    private Long userId;
+@NoArgsConstructor
+public class UserResponseDTO {
+    private Long id;
     private String username;
     private String role;
+    private Boolean enabled;
 }

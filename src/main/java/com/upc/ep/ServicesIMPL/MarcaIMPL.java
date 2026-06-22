@@ -5,8 +5,8 @@ import com.upc.ep.Entidades.Marca;
 import com.upc.ep.Entidades.Movimiento;
 import com.upc.ep.Entidades.Prenda;
 import com.upc.ep.Repositorio.MarcaRepos;
-import com.upc.ep.Repositorio.MovimientoRepos;
 import com.upc.ep.Services.MarcaService;
+import com.upc.ep.Services.MovimientoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +19,7 @@ public class MarcaIMPL implements MarcaService {
     private MarcaRepos marcaRepos;
 
     @Autowired
-    private MovimientoRepos movimientoRepos;
+    private MovimientoService movimientoService;
 
     @Override
     @Transactional
@@ -29,11 +29,15 @@ public class MarcaIMPL implements MarcaService {
         marca.setNombre(dto.getNombre());
         marca.setActivo(true);
         Marca marcaGuardada = marcaRepos.save(marca);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_MARCA);
-        movimiento.setMotivo("Se registró la marca: " + marcaGuardada.getNombre());
-        movimiento.setReferenciaId("MAR-" + marcaGuardada.getIdMarca());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.MARCA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_MARCA)
+                        .entidadId(marca.getIdMarca())
+                        .codigoReferencia(marca.getNombre())
+                        .motivo("Se registró la marca " + marca.getNombre())
+                        .build()
+        );
         return mapToResponse(marcaGuardada);
     }
 
@@ -68,11 +72,15 @@ public class MarcaIMPL implements MarcaService {
         if (existeNombre && !marca.getNombre().equalsIgnoreCase(dto.getNombre())) {throw new RuntimeException("Ya existe una marca con ese nombre");}
         marca.setNombre(dto.getNombre());
         marcaRepos.save(marca);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.MODIFICACION_MARCA);
-        movimiento.setMotivo("Se modificó la marca: " + marca.getNombre());
-        movimiento.setReferenciaId("MAR-" + marca.getIdMarca().toString());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.MARCA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.MODIFICACION_MARCA)
+                        .entidadId(marca.getIdMarca())
+                        .codigoReferencia(marca.getNombre())
+                        .motivo("Se actualizó la marca " + marca.getNombre())
+                        .build()
+        );
         return toMarcaDTO(marca);
     }
 
@@ -88,11 +96,15 @@ public class MarcaIMPL implements MarcaService {
         if (tienePrendasActivas) {throw new RuntimeException("No se puede desactivar una marca con prendas activas");}
         marca.setActivo(false);
         marcaRepos.save(marca);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.INHABILITACION_MARCA);
-        movimiento.setMotivo("Se desactivó la marca: " + marca.getNombre());
-        movimiento.setReferenciaId("MAR-" + marca.getIdMarca().toString());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.MARCA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.INHABILITACION_MARCA)
+                        .entidadId(marca.getIdMarca())
+                        .codigoReferencia(marca.getNombre())
+                        .motivo("Se inhabilitó la marca " + marca.getNombre())
+                        .build()
+        );
     }
 
     @Override
@@ -102,10 +114,14 @@ public class MarcaIMPL implements MarcaService {
         if (marca.getActivo()) {throw new RuntimeException("La marca ya está activa");}
         marca.setActivo(true);
         marcaRepos.save(marca);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_MARCA);
-        movimiento.setMotivo("Se activó la marca: " + marca.getNombre());
-        movimiento.setReferenciaId("MAR-" + marca.getIdMarca().toString());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.MARCA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_MARCA)
+                        .entidadId(marca.getIdMarca())
+                        .codigoReferencia(marca.getNombre())
+                        .motivo("Se reactivó la marca " + marca.getNombre())
+                        .build()
+        );
     }
 }

@@ -4,6 +4,7 @@ import com.upc.ep.DTO.*;
 import com.upc.ep.Entidades.*;
 import com.upc.ep.Repositorio.*;
 import com.upc.ep.Services.LoteService;
+import com.upc.ep.Services.MovimientoService;
 import com.upc.ep.Services.PrendaService;
 
 import com.upc.ep.Specification.PrendaSpecification;
@@ -42,6 +43,10 @@ public class PrendaIMPL implements PrendaService {
 
     @Autowired
     private MovimientoRepos movimientoRepos;
+
+    @Autowired
+    private MovimientoService movimientoService;
+
     @Autowired
     private VentaRepos ventaRepos;
 
@@ -76,11 +81,15 @@ public class PrendaIMPL implements PrendaService {
         metrica.setVentasRealizadas(0);
         metricaRepos.save(metrica);
         prendaGuardada.setMetrica(metrica);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_PRENDA);
-        movimiento.setMotivo("Se registró la prenda: " + prendaGuardada.getCodigo());
-        movimiento.setReferenciaId(prendaGuardada.getCodigo());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.PRENDA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_PRENDA)
+                        .entidadId(prenda.getIdPrenda())
+                        .codigoReferencia(prenda.getCodigo())
+                        .motivo("Se registró la prenda " + prenda.getCodigo())
+                        .build()
+        );
         return mapToResponse(prendaGuardada);
     }
 
@@ -115,6 +124,7 @@ public class PrendaIMPL implements PrendaService {
     @Override
     @Transactional
     public PrendaResponseDTO actualizarPrenda(Long idPrenda, PrendaUpdateDTO dto) {
+        System.out.println("ENTRO A ACTUALIZAR PRENDA");
         Prenda prenda = prendaRepos.findById(idPrenda).orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
         if (!prenda.getActivo()) {throw new RuntimeException("La prenda está inactiva");}
         Categoria categoria = categoriaRepos.findByIdCategoriaAndActivoTrue(dto.getCategoriaId()).orElseThrow(() -> new RuntimeException("Categoría no encontrada o inactiva"));
@@ -127,33 +137,36 @@ public class PrendaIMPL implements PrendaService {
         prenda.setCategoria(categoria);
         prenda.setMarca(marca);
         Prenda prendaActualizada = prendaRepos.save(prenda);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.MODIFICACION_PRENDA);
-        movimiento.setMotivo("Se modificó la prenda: " + prendaActualizada.getCodigo());
-        movimiento.setReferenciaId(prendaActualizada.getCodigo());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.PRENDA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.MODIFICACION_PRENDA)
+                        .entidadId(prenda.getIdPrenda())
+                        .codigoReferencia(prenda.getCodigo())
+                        .motivo("Se actualizó la información de la prenda " + prenda.getCodigo())
+                        .build()
+        );
         return mapToResponse(prendaActualizada);
     }
 
     @Override
     @Transactional
-    public void eliminarPrenda(Long idPrenda) {
+    public void inhabilitarPrenda(Long idPrenda) {
         Prenda prenda = prendaRepos.findById(idPrenda).orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
         if (!prenda.getActivo()) {throw new RuntimeException("La prenda ya se encuentra inactiva");}
-        boolean tieneStockDisponible =
-                prenda.getLotes()
-                        .stream()
-                        .anyMatch(lote -> lote.getActivo() && lote.getStockActual() > 0);
-        if (tieneStockDisponible) {throw new RuntimeException("No se puede inhabilitar una prenda con stock disponible");}
         prenda.setEstadoAnterior(prenda.getEstado());
         prenda.setEstado(Prenda.EstadoPrenda.INHABILITADA);
         prenda.setActivo(false);
         prendaRepos.save(prenda);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.INHABILITACION_PRENDA);
-        movimiento.setMotivo("Se inhabilitó la prenda: " + prenda.getCodigo());
-        movimiento.setReferenciaId(prenda.getCodigo());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.PRENDA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.INHABILITACION_PRENDA)
+                        .entidadId(prenda.getIdPrenda())
+                        .codigoReferencia(prenda.getCodigo())
+                        .motivo("Se inhabilitó la prenda " + prenda.getCodigo())
+                        .build()
+        );
     }
 
     @Override
@@ -218,33 +231,42 @@ public class PrendaIMPL implements PrendaService {
     @Transactional
     public void validarPrendaAgotada(Long idPrenda) {
         Prenda prenda = prendaRepos.findById(idPrenda).orElseThrow(() -> new RuntimeException("Prenda no encontrada"));
-        if (prenda.getEstado() == Prenda.EstadoPrenda.INHABILITADA) {return;}
-        boolean tieneLotesDisponibles =
-                prenda.getLotes()
-                        .stream()
-                        .anyMatch(lote -> Boolean.TRUE.equals(lote.getActivo()) && lote.getStockActual() > 0);
+        if (prenda.getEstado() == Prenda.EstadoPrenda.INHABILITADA) {
+            return;
+        }
+        boolean tieneLotesDisponibles = prenda.getLotes()
+                .stream()
+                .anyMatch(lote -> Boolean.TRUE.equals(lote.getActivo()) && lote.getStockActual() > 0);
         Prenda.EstadoPrenda estadoActual = prenda.getEstado();
         if (tieneLotesDisponibles) {
             if (estadoActual != Prenda.EstadoPrenda.DISPONIBLE) {
                 prenda.setEstadoAnterior(estadoActual);
                 prenda.setEstado(Prenda.EstadoPrenda.DISPONIBLE);
                 prendaRepos.save(prenda);
-                Movimiento movimiento = new Movimiento();
-                movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.CAMBIO_ESTADO_PRENDA);
-                movimiento.setMotivo("La prenda pasó a DISPONIBLE");
-                movimiento.setReferenciaId(prenda.getCodigo());
-                movimientoRepos.save(movimiento);
+                movimientoService.registrarMovimiento(
+                        MovimientoRegistroDTO.builder()
+                                .modulo(Movimiento.ModuloMovimiento.PRENDA)
+                                .tipoMovimiento(Movimiento.TipoMovimiento.PRENDA_DISPONIBLE)
+                                .entidadId(prenda.getIdPrenda())
+                                .codigoReferencia(prenda.getCodigo())
+                                .motivo("La prenda " + prenda.getCodigo() + " volvió a estar disponible para la venta")
+                                .build()
+                );
             }
         } else {
             if (estadoActual != Prenda.EstadoPrenda.AGOTADO) {
                 prenda.setEstadoAnterior(estadoActual);
                 prenda.setEstado(Prenda.EstadoPrenda.AGOTADO);
                 prendaRepos.save(prenda);
-                Movimiento movimiento = new Movimiento();
-                movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.PRENDA_AGOTADA);
-                movimiento.setMotivo("La prenda quedó agotada");
-                movimiento.setReferenciaId(prenda.getCodigo());
-                movimientoRepos.save(movimiento);
+                movimientoService.registrarMovimiento(
+                        MovimientoRegistroDTO.builder()
+                                .modulo(Movimiento.ModuloMovimiento.PRENDA)
+                                .tipoMovimiento(Movimiento.TipoMovimiento.PRENDA_AGOTADA)
+                                .entidadId(prenda.getIdPrenda())
+                                .codigoReferencia(prenda.getCodigo())
+                                .motivo("La prenda " + prenda.getCodigo() + " se quedó sin stock disponible")
+                                .build()
+                );
             }
         }
     }
@@ -322,11 +344,15 @@ public class PrendaIMPL implements PrendaService {
             prenda.setEstado(Prenda.EstadoPrenda.SIN_LOTES);
         }
         prendaRepos.save(prenda);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_PRENDA);
-        movimiento.setMotivo("Se reactivó la prenda: " + prenda.getCodigo());
-        movimiento.setReferenciaId(prenda.getCodigo());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.PRENDA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_PRENDA)
+                        .entidadId(prenda.getIdPrenda())
+                        .codigoReferencia(prenda.getCodigo())
+                        .motivo("Se reactivó la prenda " + prenda.getCodigo())
+                        .build()
+        );
     }
 
     @Override

@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 public interface PrendaService {
     PrendaResponseDTO registrarPrenda(PrendaRegistroDTO dto);
     PrendaResponseDTO actualizarPrenda(Long idPrenda, PrendaUpdateDTO dto);
-    void eliminarPrenda(Long id);
+    void inhabilitarPrenda(Long id);
     PrendaDetalleDTO obtenerDetallePrenda(Long idPrenda);
     void validarPrendaAgotada(Long idPrenda);
     Page<PrendaListResponseDTO> listarPrendasFiltradas(

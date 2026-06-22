@@ -11,22 +11,37 @@ import org.springframework.context.annotation.Configuration;
 public class SwaggerConfig {
     @Bean
     public OpenAPI customOpenAPI() {
-
         final String securitySchemeName = "bearerAuth";
-
         return new OpenAPI()
-                .info(new Info()
-                        .title("Mi API con JWT")
-                        .version("1.0"))
-                .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
+                .info(
+                        new Info()
+                                .title("NORCA API")
+                                .description("""
+                                        API REST del Sistema de Gestión de Inventario NORCA.
+                                        Autenticación basada en JWT.
+                                        Roles soportados:
+                                        - ROLE_ADMIN
+                                        - ROLE_OPERADOR
+                                        - ROLE_LECTOR
+                                        """)
+                                .version("1.0.0")
+                )
+
+                .addSecurityItem(
+                        new SecurityRequirement()
+                                .addList(securitySchemeName)
+                )
+
                 .components(
                         new Components()
-                                .addSecuritySchemes(securitySchemeName,
+                                .addSecuritySchemes(
+                                        securitySchemeName,
                                         new SecurityScheme()
                                                 .name(securitySchemeName)
                                                 .type(SecurityScheme.Type.HTTP)
                                                 .scheme("bearer")
                                                 .bearerFormat("JWT")
+                                                .description("Ingrese únicamente el token JWT. Swagger añadirá automáticamente el prefijo Bearer.")
                                 )
                 );
     }

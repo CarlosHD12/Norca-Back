@@ -4,16 +4,28 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Data
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class MovimientoResponseDTO {
+
     private Long idMovimiento;
+
+    private String modulo;
+
     private String tipoMovimiento;
+
+    private Long entidadId;
+
+    private String codigoReferencia;
+
     private String motivo;
-    private String referenciaId;
+
+    private Long usuarioId;
+
+    private String usuario;
+
     private LocalDateTime fecha;
 }

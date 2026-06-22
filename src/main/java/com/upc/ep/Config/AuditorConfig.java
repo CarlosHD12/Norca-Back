@@ -1,21 +1,33 @@
 package com.upc.ep.Config;
 
-import com.upc.ep.security.entities.User;
-import com.upc.ep.security.repositories.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.Optional;
 
 @Configuration
 public class AuditorConfig {
-    @Autowired
-    private UserRepository userRepos;
 
     @Bean
-    public AuditorAware<User> auditorAware() {
+    public AuditorAware<String> auditorAware() {
+
         return () -> {
-            return userRepos.findById(1L);
+
+            Authentication authentication =
+                    SecurityContextHolder.getContext().getAuthentication();
+
+            if (authentication == null
+                    || !authentication.isAuthenticated()
+                    || authentication instanceof AnonymousAuthenticationToken) {
+
+                return Optional.empty();
+            }
+
+            return Optional.of(authentication.getName());
         };
     }
 }

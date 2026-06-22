@@ -1,6 +1,5 @@
 package com.upc.ep.Entidades;
 
-import com.upc.ep.security.entities.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,15 +16,14 @@ import java.time.LocalDateTime;
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 public abstract class Auditable {
+
     @CreatedBy
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "creado_por", updatable = false)
-    private User creadoPor;
+    @Column(name = "creado_por", updatable = false, length = 50)
+    private String creadoPor;
 
     @LastModifiedBy
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actualizado_por")
-    private User actualizadoPor;
+    @Column(name = "actualizado_por", length = 50)
+    private String actualizadoPor;
 
     @CreatedDate
     @Column(name = "fecha_creacion", nullable = false, updatable = false)

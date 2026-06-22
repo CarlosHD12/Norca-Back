@@ -4,6 +4,7 @@ import com.upc.ep.DTO.*;
 import com.upc.ep.Entidades.*;
 import com.upc.ep.Repositorio.*;
 import com.upc.ep.Services.LoteService;
+import com.upc.ep.Services.MovimientoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,9 @@ public class LoteIMPL implements LoteService {
     @Autowired
     private MovimientoRepos movimientoRepos;
 
+    @Autowired
+    private MovimientoService movimientoService;
+
     @Override
     @Transactional
     public LoteResponseDTO registrarLote(LoteRegistroDTO dto) {
@@ -45,8 +49,7 @@ public class LoteIMPL implements LoteService {
                 .stream()
                 .mapToInt(InventarioRegistroDTO::getStock)
                 .sum();
-        if (sumaInventarios
-                != dto.getCantidadInicial()) {
+        if (sumaInventarios != dto.getCantidadInicial()) {
             throw new RuntimeException("La suma de inventarios debe coincidir con la cantidad inicial");
         }
         Set<Long> tallas = new HashSet<>();
@@ -72,21 +75,22 @@ public class LoteIMPL implements LoteService {
             inventario.setTalla(talla);
             inventarioRepos.save(inventario);
         }
+
+        // Si la prenda no tenía stock disponible, vuelve a estar disponible
         if (prenda.getEstado() == Prenda.EstadoPrenda.SIN_LOTES || prenda.getEstado() == Prenda.EstadoPrenda.AGOTADO) {
             prenda.setEstadoAnterior(prenda.getEstado());
             prenda.setEstado(Prenda.EstadoPrenda.DISPONIBLE);
             prendaRepos.save(prenda);
-            Movimiento movimientoEstado = new Movimiento();
-            movimientoEstado.setTipoMovimiento(Movimiento.TipoMovimiento.CAMBIO_ESTADO_PRENDA);
-            movimientoEstado.setMotivo("La prenda pasó a DISPONIBLE por nuevo lote");
-            movimientoEstado.setReferenciaId(prenda.getCodigo());
-            movimientoRepos.save(movimientoEstado);
         }
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_LOTE);
-        movimiento.setMotivo("Se registró el lote: " + loteGuardado.getCodigoLote());
-        movimiento.setReferenciaId(loteGuardado.getCodigoLote());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.LOTE)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_LOTE)
+                        .entidadId(loteGuardado.getIdLote())
+                        .codigoReferencia(loteGuardado.getCodigoLote())
+                        .motivo("Se registró el lote " + loteGuardado.getCodigoLote())
+                        .build()
+        );
         return mapToResponse(loteGuardado);
     }
 
@@ -166,43 +170,36 @@ public class LoteIMPL implements LoteService {
     public void actualizarStockLote(Long idLote) {
         Lote lote = loteRepos.findById(idLote).orElseThrow(() -> new RuntimeException("Lote no encontrado"));
         Boolean estabaActivo = lote.getActivo();
-        Integer stockActual =
-                lote.getInventarios()
-                        .stream()
-                        .mapToInt(Inventario::getStock)
-                        .sum();
+        Integer stockActual = lote.getInventarios()
+                .stream()
+                .mapToInt(Inventario::getStock)
+                .sum();
         lote.setStockActual(stockActual);
         if (stockActual == 0) {
             lote.setActivo(false);
             if (Boolean.TRUE.equals(estabaActivo)) {
-                Movimiento movimiento = new Movimiento();
-                movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.LOTE_AGOTADO);
-                movimiento.setMotivo("El lote quedó agotado: " + lote.getCodigoLote());
-                movimiento.setReferenciaId(lote.getCodigoLote());
-                movimientoRepos.save(movimiento);
-                Optional<Lote> nuevoFIFO = loteRepos.findFirstByPrendaIdPrendaAndActivoTrueAndStockActualGreaterThanOrderByFechaIngresoAsc(
-                        lote.getPrenda().getIdPrenda(), 0);
-                if (nuevoFIFO.isPresent()) {Movimiento movimientoFIFO = new Movimiento();
-                    movimientoFIFO.setTipoMovimiento(Movimiento.TipoMovimiento.CAMBIO_FIFO);
-                    movimientoFIFO.setMotivo("El nuevo lote FIFO activo es: " + nuevoFIFO.get().getCodigoLote());
-                    movimientoFIFO.setReferenciaId(lote.getPrenda().getCodigo());
-                    movimientoRepos.save(movimientoFIFO);
-                }
+                movimientoService.registrarMovimiento(
+                        MovimientoRegistroDTO.builder()
+                                .modulo(Movimiento.ModuloMovimiento.LOTE)
+                                .tipoMovimiento(Movimiento.TipoMovimiento.LOTE_AGOTADO)
+                                .entidadId(lote.getIdLote())
+                                .codigoReferencia(lote.getCodigoLote())
+                                .motivo("El lote " + lote.getCodigoLote() + " quedó agotado")
+                                .build()
+                );
             }
-
         } else {
             lote.setActivo(true);
             if (!Boolean.TRUE.equals(estabaActivo)) {
-                Movimiento movimiento = new Movimiento();
-                movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_LOTE);
-                movimiento.setMotivo("El lote volvió a estar disponible: " + lote.getCodigoLote());
-                movimiento.setReferenciaId(lote.getCodigoLote());
-                movimientoRepos.save(movimiento);
-                Movimiento movimientoFIFO = new Movimiento();
-                movimientoFIFO.setTipoMovimiento(Movimiento.TipoMovimiento.CAMBIO_FIFO);
-                movimientoFIFO.setMotivo("El nuevo lote FIFO activo es: " + lote.getCodigoLote());
-                movimientoFIFO.setReferenciaId(lote.getPrenda().getCodigo());
-                movimientoRepos.save(movimientoFIFO);
+                movimientoService.registrarMovimiento(
+                        MovimientoRegistroDTO.builder()
+                                .modulo(Movimiento.ModuloMovimiento.LOTE)
+                                .tipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_LOTE)
+                                .entidadId(lote.getIdLote())
+                                .codigoReferencia(lote.getCodigoLote())
+                                .motivo("El lote " + lote.getCodigoLote() + " volvió a estar disponible")
+                                .build()
+                );
             }
         }
         loteRepos.save(lote);

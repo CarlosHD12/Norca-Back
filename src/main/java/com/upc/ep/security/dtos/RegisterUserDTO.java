@@ -1,6 +1,7 @@
 package com.upc.ep.security.dtos;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,10 +9,12 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class AuthRequestDTO {
-    @NotBlank(message = "El usuario es obligatorio")
+public class RegisterUserDTO {
+    @NotBlank
+    @Size(min = 3, max = 50)
     private String username;
 
-    @NotBlank(message = "La contraseña es obligatoria")
+    @NotBlank
+    @Size(min = 6, max = 100)
     private String password;
 }

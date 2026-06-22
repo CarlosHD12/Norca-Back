@@ -4,6 +4,7 @@ import com.upc.ep.DTO.*;
 import com.upc.ep.Entidades.*;
 import com.upc.ep.Repositorio.*;
 import com.upc.ep.Services.LoteService;
+import com.upc.ep.Services.MovimientoService;
 import com.upc.ep.Services.PrendaService;
 import com.upc.ep.Services.VentaService;
 import org.springframework.data.domain.Page;
@@ -32,7 +33,7 @@ public class VentaIMPL implements VentaService {
     private DetalleVentRepos detalleVentaRepos;
 
     @Autowired
-    private MovimientoRepos movimientoRepos;
+    private MovimientoService movimientoService;
 
     @Autowired
     private PrendaService prendaService;
@@ -104,11 +105,15 @@ public class VentaIMPL implements VentaService {
         ventaGuardada.setUnidades(totalUnidades);
         ventaGuardada.getDetalleVentas().addAll(detallesVenta);
         ventaRepos.save(ventaGuardada);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.VENTA);
-        movimiento.setMotivo("Venta registrada correctamente");
-        movimiento.setReferenciaId(ventaGuardada.getCodigo());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.VENTA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_VENTA)
+                        .entidadId(venta.getIdVenta())
+                        .codigoReferencia(venta.getCodigo())
+                        .motivo("Se registró la venta " + venta.getCodigo())
+                        .build()
+        );
         return VentaResponseDTO.builder()
                 .idVenta(ventaGuardada.getIdVenta())
                 .codigo(ventaGuardada.getCodigo())
@@ -155,11 +160,15 @@ public class VentaIMPL implements VentaService {
         }
         venta.setEstadoVenta(Venta.EstadoVenta.ANULADA);
         ventaRepos.save(venta);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.ANULACION_VENTA);
-        movimiento.setMotivo("Se anuló la venta: " + venta.getCodigo());
-        movimiento.setReferenciaId(venta.getCodigo());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.VENTA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.ANULACION_VENTA)
+                        .entidadId(venta.getIdVenta())
+                        .codigoReferencia(venta.getCodigo())
+                        .motivo("Se anuló la venta " + venta.getCodigo())
+                        .build()
+        );
     }
 
     @Override

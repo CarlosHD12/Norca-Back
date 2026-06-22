@@ -3,12 +3,13 @@ package com.upc.ep.ServicesIMPL;
 import com.upc.ep.DTO.CategoriaRegistroDTO;
 import com.upc.ep.DTO.CategoriaResponseDTO;
 import com.upc.ep.DTO.CategoriaUpdateDTO;
+import com.upc.ep.DTO.MovimientoRegistroDTO;
 import com.upc.ep.Entidades.Categoria;
 import com.upc.ep.Entidades.Movimiento;
 import com.upc.ep.Entidades.Prenda;
 import com.upc.ep.Repositorio.CategoriaRepos;
-import com.upc.ep.Repositorio.MovimientoRepos;
 import com.upc.ep.Services.CategoriaService;
+import com.upc.ep.Services.MovimientoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +22,7 @@ public class CategoriaIMPL implements CategoriaService {
     private CategoriaRepos categoriaRepos;
 
     @Autowired
-    private MovimientoRepos movimientoRepos;
+    private MovimientoService movimientoService;
 
     @Override
     @Transactional
@@ -31,11 +32,15 @@ public class CategoriaIMPL implements CategoriaService {
         categoria.setNombre(dto.getNombre());
         categoria.setActivo(true);
         Categoria categoriaGuardada = categoriaRepos.save(categoria);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_CATEGORIA);
-        movimiento.setMotivo("Se registró la categoría: " + categoriaGuardada.getNombre());
-        movimiento.setReferenciaId("CAT-" + categoriaGuardada.getIdCategoria());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.CATEGORIA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_CATEGORIA)
+                        .entidadId(categoria.getIdCategoria())
+                        .codigoReferencia(categoria.getNombre())
+                        .motivo("Se registró la categoría " + categoria.getNombre())
+                        .build()
+        );
         return mapToResponse(categoriaGuardada);
     }
 
@@ -70,11 +75,15 @@ public class CategoriaIMPL implements CategoriaService {
         if (existeNombre && !categoria.getNombre().equalsIgnoreCase(dto.getNombre())) {throw new RuntimeException("Ya existe una categoría con ese nombre");}
         categoria.setNombre(dto.getNombre());
         categoriaRepos.save(categoria);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.MODIFICACION_CATEGORIA);
-        movimiento.setMotivo("Se modificó la categoría: " + categoria.getNombre());
-        movimiento.setReferenciaId("CAT-" + categoria.getIdCategoria().toString());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.CATEGORIA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.MODIFICACION_CATEGORIA)
+                        .entidadId(categoria.getIdCategoria())
+                        .codigoReferencia(categoria.getNombre())
+                        .motivo("Se actualizó la categoría " + categoria.getNombre())
+                        .build()
+        );
         return toCategoriaDTO(categoria);
     }
 
@@ -90,11 +99,15 @@ public class CategoriaIMPL implements CategoriaService {
         if (tienePrendasActivas) {throw new RuntimeException("No se puede desactivar una categoría con prendas activas");}
         categoria.setActivo(false);
         categoriaRepos.save(categoria);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.INHABILITACION_CATEGORIA);
-        movimiento.setMotivo("Se desactivó la categoría: " + categoria.getNombre());
-        movimiento.setReferenciaId("CAT-" + categoria.getIdCategoria().toString());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.CATEGORIA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.INHABILITACION_CATEGORIA)
+                        .entidadId(categoria.getIdCategoria())
+                        .codigoReferencia(categoria.getNombre())
+                        .motivo("Se inhabilitó la categoría " + categoria.getNombre())
+                        .build()
+        );
     }
 
     @Override
@@ -104,10 +117,14 @@ public class CategoriaIMPL implements CategoriaService {
         if (categoria.getActivo()) {throw new RuntimeException("La categoría ya está activa");}
         categoria.setActivo(true);
         categoriaRepos.save(categoria);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_CATEGORIA);
-        movimiento.setMotivo("Se activó la categoría: " + categoria.getNombre());
-        movimiento.setReferenciaId("CAT-" + categoria.getIdCategoria().toString());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.CATEGORIA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_CATEGORIA)
+                        .entidadId(categoria.getIdCategoria())
+                        .codigoReferencia(categoria.getNombre())
+                        .motivo("Se reactivó la categoría " + categoria.getNombre())
+                        .build()
+        );
     }
 }

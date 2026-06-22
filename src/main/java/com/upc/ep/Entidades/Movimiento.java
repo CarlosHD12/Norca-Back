@@ -10,7 +10,8 @@ import java.time.LocalDateTime;
 @Table(
         indexes = {
                 @Index(name = "idx_movimiento_fecha", columnList = "fecha"),
-                @Index(name = "idx_movimiento_tipo", columnList = "tipo_movimiento")
+                @Index(name = "idx_movimiento_tipo", columnList = "tipo_movimiento"),
+                @Index(name = "idx_movimiento_modulo", columnList = "modulo")
         }
 )
 @Getter
@@ -26,6 +27,10 @@ public class Movimiento extends Auditable {
     private Long idMovimiento;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private ModuloMovimiento modulo;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "tipo_movimiento", nullable = false, length = 50)
     private TipoMovimiento tipoMovimiento;
 
@@ -33,8 +38,11 @@ public class Movimiento extends Auditable {
     @Column(length = 255)
     private String motivo;
 
-    @Column(name = "referencia_id", length = 50)
-    private String referenciaId;
+    @Column(nullable = false)
+    private Long entidadId;
+
+    @Column(nullable = false)
+    private String codigoReferencia;
 
     @Column(nullable = false)
     private LocalDateTime fecha;
@@ -47,46 +55,60 @@ public class Movimiento extends Auditable {
         }
     }
 
+    public enum ModuloMovimiento {
+        PRENDA,
+        LOTE,
+        VENTA,
+        CATEGORIA,
+        MARCA,
+        TALLA,
+        USUARIO,
+        SISTEMA
+    }
+
     public enum TipoMovimiento {
+        // PRENDAS
+        REGISTRO_PRENDA,
+        MODIFICACION_PRENDA,
+        INHABILITACION_PRENDA,
+        REACTIVACION_PRENDA,
+        PRENDA_DISPONIBLE,
+        PRENDA_AGOTADA,
+
         // LOTES
         REGISTRO_LOTE,
         LOTE_AGOTADO,
         REACTIVACION_LOTE,
-        CAMBIO_FIFO,
 
-
-        // VENTAS / COMPLETO
-        VENTA,
+        // VENTAS
+        REGISTRO_VENTA,
         ANULACION_VENTA,
 
-        // PRENDAS / COMPLETO
-        REGISTRO_PRENDA,
-        MODIFICACION_PRENDA,
-        CAMBIO_ESTADO_PRENDA,
-        PRENDA_AGOTADA,
-        INHABILITACION_PRENDA,
-        REACTIVACION_PRENDA,
-
-        // CATEGORÍAS / COMPLETO
+        // CATEGORIAS
         REGISTRO_CATEGORIA,
         MODIFICACION_CATEGORIA,
         INHABILITACION_CATEGORIA,
         REACTIVACION_CATEGORIA,
 
-        // MARCAS / COMPLETO
+        // MARCAS
         REGISTRO_MARCA,
         MODIFICACION_MARCA,
         INHABILITACION_MARCA,
         REACTIVACION_MARCA,
 
-        // TALLAS / COMPLETO
+        // TALLAS
         REGISTRO_TALLA,
         MODIFICACION_TALLA,
         INHABILITACION_TALLA,
         REACTIVACION_TALLA,
 
+        // USUARIOS
+        REGISTRO_USUARIO,
+        CAMBIO_ROL_USUARIO,
+        INHABILITACION_USUARIO,
+        REACTIVACION_USUARIO,
+
         // SISTEMA
-        ACCION_ADMINISTRATIVA,
-        CORRECCION_MANUAL
+        ACCION_ADMINISTRATIVA
     }
 }

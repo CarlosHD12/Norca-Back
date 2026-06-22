@@ -1,22 +1,29 @@
 package com.upc.ep.DTO;
 
 import com.upc.ep.Entidades.Movimiento;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
-@Data
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class MovimientoRegistroDTO {
-    @NotNull(message = "El tipo de movimiento es obligatorio")
+    @NotNull
+    private Movimiento.ModuloMovimiento modulo;
+
+    @NotNull
     private Movimiento.TipoMovimiento tipoMovimiento;
+
+    @NotNull
+    private Long entidadId;
+
+    @NotBlank
+    private String codigoReferencia;
 
     @Size(max = 255)
     private String motivo;
-
-    private String referenciaId;
 }

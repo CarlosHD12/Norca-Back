@@ -1,13 +1,14 @@
 package com.upc.ep.ServicesIMPL;
 
+import com.upc.ep.DTO.MovimientoRegistroDTO;
 import com.upc.ep.DTO.TallaRegistroDTO;
 import com.upc.ep.DTO.TallaResponseDTO;
 import com.upc.ep.DTO.TallaUpdateDTO;
 import com.upc.ep.Entidades.Movimiento;
 import com.upc.ep.Entidades.Talla;
-import com.upc.ep.Repositorio.MovimientoRepos;
 import com.upc.ep.Repositorio.TallaRepos;
 
+import com.upc.ep.Services.MovimientoService;
 import com.upc.ep.Services.TallaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,7 @@ public class TallaIMPL implements TallaService {
     private TallaRepos tallaRepos;
 
     @Autowired
-    private MovimientoRepos movimientoRepos;
+    private MovimientoService movimientoService;
 
     @Override
     @Transactional
@@ -31,11 +32,15 @@ public class TallaIMPL implements TallaService {
         talla.setNombre(dto.getNombre());
         talla.setActivo(true);
         Talla tallaGuardada = tallaRepos.save(talla);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_TALLA);
-        movimiento.setMotivo("Se registró la talla: " + tallaGuardada.getNombre());
-        movimiento.setReferenciaId("TAL-" + tallaGuardada.getIdTalla());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.TALLA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.REGISTRO_TALLA)
+                        .entidadId(talla.getIdTalla())
+                        .codigoReferencia(talla.getNombre())
+                        .motivo("Se registró la talla " + talla.getNombre())
+                        .build()
+        );
         return mapToResponse(tallaGuardada);
     }
 
@@ -72,11 +77,15 @@ public class TallaIMPL implements TallaService {
         if (existeNombre && !talla.getNombre().equalsIgnoreCase(dto.getNombre())) {throw new RuntimeException("Ya existe una talla con ese nombre");}
         talla.setNombre(dto.getNombre());
         tallaRepos.save(talla);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.MODIFICACION_TALLA);
-        movimiento.setMotivo("Se modificó la talla: " + talla.getNombre());
-        movimiento.setReferenciaId("TAL-" + talla.getIdTalla().toString());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.TALLA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.MODIFICACION_TALLA)
+                        .entidadId(talla.getIdTalla())
+                        .codigoReferencia(talla.getNombre())
+                        .motivo("Se actualizó la talla " + talla.getNombre())
+                        .build()
+        );
         return toTallaDTO(talla);
     }
 
@@ -92,11 +101,15 @@ public class TallaIMPL implements TallaService {
         if (tieneInventario) {throw new RuntimeException("No se puede desactivar una talla con stock disponible");}
         talla.setActivo(false);
         tallaRepos.save(talla);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.INHABILITACION_TALLA);
-        movimiento.setMotivo("Se desactivó la talla: " + talla.getNombre());
-        movimiento.setReferenciaId("TAL-" + talla.getIdTalla().toString());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.TALLA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.INHABILITACION_TALLA)
+                        .entidadId(talla.getIdTalla())
+                        .codigoReferencia(talla.getNombre())
+                        .motivo("Se inhabilitó la talla " + talla.getNombre())
+                        .build()
+        );
     }
 
     @Override
@@ -106,10 +119,14 @@ public class TallaIMPL implements TallaService {
         if (talla.getActivo()) {throw new RuntimeException("La talla ya está activa");}
         talla.setActivo(true);
         tallaRepos.save(talla);
-        Movimiento movimiento = new Movimiento();
-        movimiento.setTipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_TALLA);
-        movimiento.setMotivo("Se activó la talla: " + talla.getNombre());
-        movimiento.setReferenciaId("TAL-" + talla.getIdTalla().toString());
-        movimientoRepos.save(movimiento);
+        movimientoService.registrarMovimiento(
+                MovimientoRegistroDTO.builder()
+                        .modulo(Movimiento.ModuloMovimiento.TALLA)
+                        .tipoMovimiento(Movimiento.TipoMovimiento.REACTIVACION_TALLA)
+                        .entidadId(talla.getIdTalla())
+                        .codigoReferencia(talla.getNombre())
+                        .motivo("Se reactivó la talla " + talla.getNombre())
+                        .build()
+        );
     }
 }

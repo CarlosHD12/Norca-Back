@@ -31,14 +31,22 @@ public class PrendaController {
 
     @PutMapping("/editar/prenda/{id}")
     @PreAuthorize("hasAnyRole('ADMIN')")
-    public ResponseEntity<PrendaResponseDTO> actualizarPrenda(@PathVariable Long id, @Valid @RequestBody PrendaUpdateDTO dto) {
-        PrendaResponseDTO response = prendaService.actualizarPrenda(id, dto);
+    public ResponseEntity<PrendaResponseDTO> actualizarPrenda(
+            @PathVariable Long id,
+            @Valid @RequestBody PrendaUpdateDTO dto) {
+
+        System.out.println("ENTRO AL CONTROLLER EDITAR");
+
+        PrendaResponseDTO response =
+                prendaService.actualizarPrenda(id, dto);
+
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/eliminar/prenda/{id}")
+    @PutMapping("/inhabilitar/prenda/{id}")
     @PreAuthorize("hasAnyRole('ADMIN')")
-    public ResponseEntity<Void> eliminarPrenda(@PathVariable Long id) {prendaService.eliminarPrenda(id);
+    public ResponseEntity<Void> inhabilitarPrenda(@PathVariable Long id) {
+        prendaService.inhabilitarPrenda(id);
         return ResponseEntity.noContent().build();
     }
 
